@@ -173,6 +173,7 @@ flutter test
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | архитектура, стек, данные, развёртывание, тесты и CI |
 | [docs/SPEC.md](docs/SPEC.md) | матрица соответствия ТЗ: каждое требование, статус, экран / модуль / тест |
 | [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) | пояснительная записка: игровой цикл, формулы экономики и роста, обучение, UX и доступность, ограничения и план |
+| [docs/PET_DESIGN.md](docs/PET_DESIGN.md) | дизайн питомцев: генерация картинок и видео, обработка роликов, анимация в приложении; скрипты в [tools/pets](tools/pets/) |
 | [docs/CONTENT_MAP.md](docs/CONTENT_MAP.md) | карта образовательного контента: тема, навык, ситуация, правильная логика, объяснение |
 | [docs/TESTING.md](docs/TESTING.md) | автотесты, тест-кейсы сквозного сценария, отчёт о проверке на устройстве |
 | [docs/DATA_AND_LICENSES.md](docs/DATA_AND_LICENSES.md) | разрешения Android, какие данные хранятся, удаление профиля, лицензии |
