@@ -19,9 +19,14 @@ flutter run
 ## Сборка APK
 
 ```bash
-flutter build apk --release   # build/app/outputs/flutter-apk/app-release.apk
-flutter build apk --debug     # то же, что собирает CI
+flutter build apk --release        # build/app/outputs/flutter-apk/app-release.apk
+flutter build appbundle --release  # build/app/outputs/bundle/release/app-release.aab
+flutter build apk --debug          # то же, что собирает CI
 ```
+
+Пакет — `ru.litenergy.finny`, версия и номер сборки — `version:` в
+`pubspec.yaml` (сейчас 0.5.0+5). Подпись релиза — см.
+[корневой README](../README.md#подпись-релиза).
 
 Готовые сборки выкладываются в
 [GitHub Releases](https://github.com/SilMax-Lang/LCT.hack/releases).
@@ -46,6 +51,8 @@ flutter test
 | `test/level_up_test.dart` | награда за уровень, экран нового уровня |
 | `test/day_paper_test.dart` | итоги дня считают реальную просадку статов |
 | `test/glyphs_test.dart` | в текстах нет символов, которых нет в шрифте Android |
+| `test/economy_test.dart` | экономика: награды и лимиты, опыт, вклад, курсы, магазин, план, окно покупки, скрытый вход |
+| `test/tz_scenario_test.dart` | пункты ТЗ: первый запуск, история монеток, нехватка монет, рост от решений, срок цели, практика, словарик, демо-профиль, сохранение, сброс, крупный шрифт |
 | `test/smoke_test.dart` | тестовое окружение поднимается |
 | `test/game_fixture.dart`, `test/real_fonts.dart`, `test/flutter_test_config.dart` | помощники: готовое состояние игры, настоящий шрифт, отключение бесконечных анимаций |
 

@@ -23,7 +23,8 @@ LCT.hack/
 ├── mobile/     Flutter-приложение (Android). Вся игра — здесь.
 ├── backend/    FastAPI-сервер: справочники и резервная копия прогресса.
 ├── design/     Готовые ассеты для публикации (иконка 512 для RuStore).
-├── docs/       ARCHITECTURE.md (этот документ), GAME_DESIGN.md, SPEC.md.
+├── docs/       ARCHITECTURE.md (этот документ), GAME_DESIGN.md, SPEC.md,
+│             CONTENT_MAP.md, TESTING.md, DATA_AND_LICENSES.md, RUSTORE.md.
 └── .github/    CI: отдельный пайплайн для mobile и для backend.
 ```
 
@@ -84,9 +85,11 @@ mobile/lib/
 │   └── player_profile.dart Ник и возраст (7, 8, 9, 10+)
 │
 ├── data/                  КОНТЕНТ-КАТАЛОГИ (константы)
-│   ├── lessons_data.dart  Задания двух дорог: математика и финансы
-│   ├── shop_data.dart     Товары магазина, отделы, скидка дня
+│   ├── lessons_data.dart  Задания двух дорог и их темы (бюджет, копилка, покупки)
+│   ├── missions_data.dart «Практика в игре» — 6 заданий-действий
+│   ├── shop_data.dart     Товары магазина, отделы, корзины плана, скидка дня
 │   ├── goals_data.dart    Готовые цели копилки
+│   ├── glossary_data.dart Словарик терминов
 │   └── names_data.dart    Имена для кубика 🎲
 │
 ├── services/              ВСПОМОГАТЕЛЬНАЯ ЛОГИКА БЕЗ UI
@@ -101,7 +104,7 @@ mobile/lib/
 │   ├── action_spark.dart  «Огонёк» — вспышка на действие
 │   ├── streak_flame.dart  🔥 в шапке: серия дней с действиями
 │   ├── stat_bar.dart      Компактный индикатор стата
-│   ├── day_paper.dart     «Бумажка» с итогами дня
+│   ├── day_paper.dart     «Бумажка» с итогами дня + ✅/❌ решений (DayChecks)
 │   ├── finny_bubble.dart  Облачко речи Финни
 │   └── kids_button.dart   Большая кнопка на всю ширину
 │
@@ -109,8 +112,10 @@ mobile/lib/
     ├── onboarding/        7 шагов знакомства (PageView)
     ├── main_shell.dart    Нижняя навигация, 5 вкладок + шапка
     ├── home/              Главная: питомец, цель, задание, «новый день»
-    ├── plan/              План «важное → интересное → мечта»
-    ├── quests/            Две дороги заданий + экран одного задания
+    ├── diary/             Дневник: итоги дня, история монеток, прогресс
+    ├── help/              «Как играть» и словарик
+    ├── plan/              План бюджета: 4 корзины, подтверждение, план / факт
+    ├── quests/            Две дороги заданий, практика, экран задания
     ├── shop/              Магазин: перекраска, скидка дня, отделы, курсы, коллекция
     ├── bank/              Копилка + лист выбора цели
     ├── level_up/          Праздничный экран нового уровня
@@ -131,13 +136,18 @@ mobile/lib/
 | Группа | Поля |
 |---|---|
 | Профиль | `profile` (ник, возраст), `onboardingDone` |
-| Питомец | `pet` (вид, окраска, сытость/счастье/чистота, XP, уровень), `skinId`, `ownedSkins` |
-| Деньги | `balance` (кошелёк), `savings` (копилка), `goalName/goalEmoji/goalTarget` |
+| Питомец | `pet` (вид, окраска, сытость/счастье/чистота, XP, уровень) |
+| Деньги | `balance` (кошелёк), `savings` (копилка), `goalName/goalEmoji/goalTarget`, `interestTotal` |
+| История | `journal` — последние 120 записей `JournalEntry` (день, эмодзи, текст, ±кошелёк, ±копилка) |
 | Время | `day` (игровой день), `lastBonusDate` |
-| Задания | `lessonsSolved`, `lessonsRetry` («Повтори»), `lessonMistakes` |
-| Инвентарь | `inventory` (id товара → количество) |
+| План дня | `planBudget`, `plan` и `fact` (корзина → монеты), `planConfirmed` |
+| Итоги | `lastSummary` (`DaySummary`: доход, траты питомца, решения дня, опыт, совет), `savingsLog` (отложено за последние 5 дней — для срока цели) |
+| Задания | `lessonsSolved`, `lessonsRetry` («Повтори»), `rewardedToday`, `xpToday` |
+| Практика | `missionsDone`, `saveDays`, `lastSaveDay` |
+| Вещи | `inventory` (расходуемое: id → количество), `owned` (навсегда: дом, курсы, украшения) |
 | Огонёк | `streak`, `lastActionDate`, `actionPulse` |
-| Настройки | `isDark` |
+| Взрослый | `parentGiftDay` |
+| Настройки | `isDark`, `animationsOn`, `questsGuideSeen` |
 
 **Как экраны получают состояние.** Вместо Provider — свой
 `GameStateScope` (`app.dart`), это `InheritedNotifier`:
@@ -147,12 +157,14 @@ mobile/lib/
 - `GameStateScope.read(context)` — в обработчиках нажатий: без подписки.
 
 **Как меняется состояние.** Экран никогда не меняет поля напрямую, он
-вызывает метод: `buyItem`, `deposit`, `answerLesson`, `nextDay`,
-`buySkin`… Каждый метод:
+вызывает метод: `buyItem`, `deposit`, `answerLesson`, `confirmPlan`,
+`nextDay`, `recolorPet`… Каждый метод:
 
 1. проверяет правило (хватает ли монет, не отрицательный ли баланс);
-2. меняет поля;
-3. если это полезное действие — `_registerAction()` (огонёк);
+2. меняет поля и пишет строку в историю (`_log`) — баланс не меняется
+   без записи;
+3. если это полезное действие — `_registerAction()` (огонёк) и проверка
+   практики (`_completeMission`);
 4. `notifyListeners()` → все подписанные экраны перерисовываются;
 5. `save()` → сейв на диск.
 
@@ -190,8 +202,11 @@ mobile/lib/
                         (+25 монет, статы 100, этап на 12 и 35)
 ```
 
-- **Опыт** дают только задание (`lessonXp` = 5) и конец дня
-  (`endOfDayXp` = 10), не больше `maxXpPerDay` = 25 за день (`xpToday`).
+- **Опыт** дают только задание (`lessonXp` = 5) и конец дня, не больше
+  `maxXpPerDay` = 25 за день (`xpToday`). Конец дня — `periodXp(checks)` =
+  1 + 3 × число решений дня (питомец сыт и чист, план подтверждён и
+  выполнен, отложено в копилку), максимум `endOfDayXp` = 10. Решения
+  считаются в `nextDay()` до сброса плана и попадают в `DaySummary`.
   `_addXp` сам поднимает уровень и кладёт событие в `pendingLevelUp`;
   экран роста показывает `showLevelUpIfNeeded()` (и после «бумажки»).
 - **Доход** — `incomeForCourses(coursesDone)`: 50 → 60 → 75 → 95 → 120.
@@ -203,12 +218,19 @@ mobile/lib/
   12–34 — Ученик, 35+ — Исследователь (`teenLevel`, `adultLevel` в `pet.dart`).
 - **Ежедневный бонус** +15 за возвращение в новый календарный день —
   плашкой на главной (`claimDailyBonusIfNeeded`, `pendingBonus`).
-- **Итоги дня:** `nextDay()` возвращает `DaySummary` — доход и
+- **Итоги дня:** `nextDay()` возвращает `DaySummary` — доход,
   *реальную* просадку статов (если сытость была 10, в итогах будет −10,
-  а не −15). Из него `showDayPaper` собирает «бумажку».
-- **Настроение** (`Pet.mood`) считается из статов: грусть при ≤20,
-  дальше голод → грязь → скука, при всех ≥75 — радость. Оно даёт
-  фразу, мордочку и анимацию модели.
+  а не −15), решения дня, опыт и `advice` — совет на завтра. Из него
+  `showDayPaper` собирает «бумажку»; последний сохраняется в
+  `lastSummary` для «Дневника».
+- **Срок цели** — `daysToGoal(left)` по `avgDeposit`: средняя сумма,
+  отложенная за последние 5 прожитых дней (и сегодня, если уже
+  откладывали). Пока не откладывали — срок не показываем.
+- **Практика** — `_completeMission(id)` вызывается из `confirmPlan`,
+  `deposit`, `buyItem` и `nextDay`; +10 и плашка с объяснением.
+- **Настроение** (`Pet.mood`): сначала голод (сытость ≤ 40), потом
+  грязь (чистота ≤ 40), иначе — эмоция по счастью. Оно даёт фразу,
+  мордочку и ролик модели; `Pet.moodReason` — строку «почему».
 
 Все числа — константы в начале `game_state.dart` и в каталогах `data/`.
 
@@ -446,17 +468,26 @@ backend/app/
 
 ## 4. Сборка и развёртывание
 
-**Приложение.** Клиент — один APK, сервер ему не нужен:
+**Приложение.** Клиент — один APK (пакет `ru.litenergy.finny`, версия
+и номер сборки — `version:` в `pubspec.yaml`), сервер ему не нужен:
 
 ```bash
 cd mobile
 flutter pub get
-flutter build apk --release   # build/app/outputs/flutter-apk/app-release.apk
+flutter build apk --release        # build/app/outputs/flutter-apk/app-release.apk
+flutter build appbundle --release  # AAB для RuStore
 ```
 
-Готовые APK публикуются в
-[GitHub Releases](https://github.com/SilMax-Lang/LCT.hack/releases),
-целевой магазин — RuStore (иконка 512×512 — `design/icon/`).
+**Подпись релиза** (`android/app/build.gradle.kts`): ключ берётся из
+`android/key.properties` (в `.gitignore`) или из переменных окружения
+`FINNY_KEYSTORE`, `FINNY_KEYSTORE_PASSWORD`, `FINNY_KEY_ALIAS`,
+`FINNY_KEY_PASSWORD`. Ключа нет — релиз подписывается debug-ключом,
+чтобы сборка работала у любого разработчика.
+
+Готовые APK и AAB публикуются в
+[GitHub Releases](https://github.com/SilMax-Lang/LCT.hack/releases)
+(`release.yml`: тег `v*` или ручной запуск); целевой магазин — RuStore,
+черновик карточки — [RUSTORE.md](RUSTORE.md).
 
 **Сервер** (необязательный) — Docker-образ из `backend/Dockerfile`:
 
@@ -486,7 +517,12 @@ flutter build apk --release   # build/app/outputs/flutter-apk/app-release.apk
 | `level_up_test.dart` | рост уровня, экран роста |
 | `day_paper_test.dart` | итоги дня |
 | `glyphs_test.dart` | в текстах нет символов, которых нет в шрифте Android |
+| `economy_test.dart` | экономика по документам: награды, лимиты, опыт, вклад, курсы, магазин, план, окно покупки |
+| `tz_scenario_test.dart` | пункты ТЗ: первый запуск, история монеток, нехватка монет, рост от решений, срок цели, практика, словарик, демо-профиль, сохранение, сброс, крупный шрифт |
 | `smoke_test.dart` | тестовое окружение поднимается |
+
+Тест-кейсы сквозного сценария и шаблон отчёта о проверке на устройстве —
+[TESTING.md](TESTING.md).
 
 Сервер: `cd backend && pytest` (`tests/`).
 
@@ -496,7 +532,9 @@ flutter build apk --release   # build/app/outputs/flutter-apk/app-release.apk
 только при изменениях в своей папке:
 
 - `mobile-ci.yml`: `flutter analyze` → `flutter test` → debug APK.
-- `backend-ci.yml`: `ruff` → `pytest` → сборка Docker-образа.
+- `backend-ci.yml`: `ruff` → `pytest` → справочники и карта контента
+  совпадают с приложением → сборка Docker-образа.
+- `release.yml`: тесты → подписанные APK и AAB → GitHub Release.
 
 Ревьюеры по умолчанию для каждой папки — в `.github/CODEOWNERS`.
 
@@ -506,7 +544,9 @@ flutter build apk --release   # build/app/outputs/flutter-apk/app-release.apk
 
 | Что | Куда |
 |---|---|
-| Задание | запись `Lesson` в `data/lessons_data.dart` |
+| Задание | запись `Lesson` в `data/lessons_data.dart` (+ тема в `lessonTopics`), затем `python scripts/sync_from_mobile.py` и `python scripts/content_map.py` в `backend/` |
+| Практику | запись `Mission` в `data/missions_data.dart` + вызов `_completeMission('id')` там, где действие происходит |
+| Термин словарика | `Term` в `data/glossary_data.dart` |
 | Товар | запись `ShopItem` в `data/shop_data.dart` |
 | Готовую цель | `GoalPreset` в `data/goals_data.dart` |
 | Модели нового вида | 9 папок `assets/pets/<вид>_<окраска>_<этап>/` + строки в `pubspec.yaml` (см. `assets/pets/README.md`) |

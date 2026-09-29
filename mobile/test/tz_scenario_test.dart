@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finny_pet/app.dart';
 import 'package:finny_pet/data/glossary_data.dart';
@@ -8,13 +9,88 @@ import 'package:finny_pet/data/missions_data.dart';
 import 'package:finny_pet/data/shop_data.dart';
 import 'package:finny_pet/models/game_state.dart';
 import 'package:finny_pet/models/pet.dart';
+import 'package:finny_pet/screens/parent/parent_screen.dart';
 
 import 'game_fixture.dart';
+import 'real_fonts.dart';
 
 /// Проверки по пунктам ТЗ, которых не было в других тестах:
 /// история периода, нехватка монет, рост от решений, срок цели,
 /// практика, демо-профиль, сохранение. Номера пунктов — в названиях.
 void main() {
+  testWidgets('шаги 1–3: первый запуск, профиль без личных данных, питомец',
+      (tester) async {
+    await narrow(tester);
+    SharedPreferences.setMockInitialValues({});
+    final game = GameState();
+    await game.load();
+    await tester.pumpWidget(FinnyApp(gameState: game));
+    await tester.pumpAndSettle();
+
+    Future<void> press(Finder f) async {
+      await tester.ensureVisible(f);
+      await tester.pumpAndSettle();
+      await tester.tap(f);
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.textContaining('Я — Финни'), findsOneWidget);
+    await press(find.text('Далее'));
+    await tester.enterText(find.byType(TextField), 'Кирилл');
+    await tester.pump();
+    await press(find.text('Отлично! 🎉'));
+    await press(find.text('9 лет'));
+    await press(find.text('Далее'));
+    await press(find.textContaining('Выбираю:'));
+    await press(find.textContaining('Выбираю:'));
+    await tester.enterText(find.byType(TextField), 'Барсик');
+    await tester.pump();
+    await press(find.text('Готово ✅'));
+
+    // Три типа решений: надо, хочу, отложить.
+    expect(find.text('Сначала важное'), findsOneWidget);
+    expect(find.text('Потом интересное'), findsOneWidget);
+    expect(find.text('На мечту'), findsOneWidget);
+    await press(find.text('Понятно, давай играть! 🚀'));
+    await press(find.text('Круто!'));
+
+    expect(game.onboardingDone, isTrue);
+    expect(game.nickname, 'Кирилл');
+    expect(game.pet!.name, 'Барсик');
+    expect(find.text('Барсик'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('шаг 12: взрослый стирает профиль — снова онбординг',
+      (tester) async {
+    await narrow(tester);
+    final game = await readyGame();
+    game.deposit(20);
+    await tester.pumpWidget(GameStateScope(
+      notifier: game,
+      child: const MaterialApp(home: ParentScreen()),
+    ));
+    await tester.pumpAndSettle();
+
+    final reset = find.text('Начать игру заново');
+    await tester.scrollUntilVisible(reset, 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -200));
+    await tester.pumpAndSettle();
+    await tester.tap(reset);
+    await tester.pumpAndSettle();
+    expect(find.text('Удалить всё'), findsOneWidget, reason: 'подтверждение');
+    await tester.tap(find.text('Удалить всё'));
+    await tester.pumpAndSettle();
+
+    expect(game.onboardingDone, isFalse);
+    expect(game.pet, isNull);
+    expect(game.savings, 0);
+    final restored = GameState();
+    await restored.load();
+    expect(restored.onboardingDone, isFalse, reason: 'и на диске тоже');
+  });
+
   group('2.5.4 / 2.5.6 история монеток', () {
     test('покупка, копилка и доход записаны с суммой и источником', () async {
       final game = await readyGame();
@@ -273,6 +349,29 @@ void main() {
       expect(game.savings, greaterThan(25), reason: '+ проценты на 5-й день');
       expect(game.pet!.xp, greaterThan(0));
     });
+  });
+
+  testWidgets('3.6 крупный системный шрифт (×1.3): экраны без переполнений',
+      (tester) async {
+    await narrow(tester);
+    // Настоящий Roboto: служебный шрифт тестов вдвое шире и врёт.
+    final real = await useRealFonts();
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final game = await readyGame();
+    await tester.pumpWidget(FinnyApp(gameState: game));
+    await tester.pumpAndSettle();
+
+    for (final tab in ['План', 'Задания', 'Магазин', 'Банк', 'Питомец']) {
+      await tester.tap(find.text(tab));
+      await tester.pumpAndSettle();
+      if (real) {
+        expect(tester.takeException(), isNull,
+            reason: 'вкладка «$tab» переполнилась при шрифте ×1.3');
+      } else {
+        tester.takeException();
+      }
+    }
   });
 
   group('2.5.12 раздел для взрослого', () {

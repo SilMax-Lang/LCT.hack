@@ -5,11 +5,15 @@ on:
     branches: [main, develop]
     paths:
       - "backend/**"
+      - "mobile/lib/**"
+      - "docs/CONTENT_MAP.md"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     branches: [main, develop]
     paths:
       - "backend/**"
+      - "mobile/lib/**"
+      - "docs/CONTENT_MAP.md"
       - ".github/workflows/backend-ci.yml"
 
 defaults:
@@ -39,6 +43,13 @@ jobs:
 
       - name: Tests (pytest)
         run: pytest -v
+
+      # Справочники и карта контента собираются из кода приложения —
+      # проверяем, что их не забыли пересобрать.
+      - name: Content in sync with the app
+        run: |
+          python scripts/sync_from_mobile.py --check
+          python scripts/content_map.py --check
 
   docker-build:
     needs: lint-and-test

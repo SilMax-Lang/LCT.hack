@@ -691,7 +691,10 @@ class _LessonNode extends StatelessWidget {
                 children: [
                   Text(
                     lesson.title,
-                    maxLines: 2,
+                    // Узел фиксированной высоты: при крупном системном
+                    // шрифте название — в одну строку (ТЗ 3.6).
+                    maxLines:
+                        MediaQuery.textScalerOf(context).scale(10) > 11 ? 1 : 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,

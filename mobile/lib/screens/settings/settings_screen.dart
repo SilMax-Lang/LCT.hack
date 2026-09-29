@@ -18,7 +18,7 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   /// Версия внизу экрана.
-  static const String version = 'Версия 0.4.0';
+  static const String version = 'Версия 0.5.0';
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
