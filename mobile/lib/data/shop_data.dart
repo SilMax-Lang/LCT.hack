@@ -1,9 +1,60 @@
-/// Каталог магазина. Купленное падает в рюкзачок,
-/// эффекты применяются при использовании (тап по питомцу на главном экране).
+import 'package:flutter/material.dart';
+
+/// Каталог магазина (по документам «Игровая экономика» и «ТЗ Питомец Финни»).
 ///
-/// Отделы делятся на «Надо» (обязательные траты: еда, уход, здоровье)
-/// и «Хочу» (игрушки, наряды, уют) — ребёнок видит разницу прямо на ценнике.
-enum ItemKind { food, hygiene, health, fun, clothes, home }
+/// Отделы делятся на корзины бюджета:
+/// - «Надо» — еда, уход, здоровье и вещи для дома (миска, поилка, лежанка);
+/// - «Хочу» — игрушки и украшения;
+/// - «Обучение» — курсы, которые повышают доход за день.
+///
+/// Еда, уход, здоровье и игрушки — расходуемые: падают в рюкзачок и
+/// тратятся на питомца. Вещи для дома, курсы и украшения покупаются
+/// один раз и остаются навсегда (украшения можно продать за 70 %).
+enum ItemKind { food, hygiene, health, home, fun, education, decor }
+
+/// Корзина плана бюджета.
+enum BudgetBasket { mandatory, optional, education, savings }
+
+extension BudgetBasketInfo on BudgetBasket {
+  String get title {
+    switch (this) {
+      case BudgetBasket.mandatory:
+        return 'Надо';
+      case BudgetBasket.optional:
+        return 'Хочу';
+      case BudgetBasket.education:
+        return 'Обучение';
+      case BudgetBasket.savings:
+        return 'Копилка';
+    }
+  }
+
+  String get emoji {
+    switch (this) {
+      case BudgetBasket.mandatory:
+        return '🍎';
+      case BudgetBasket.optional:
+        return '🧸';
+      case BudgetBasket.education:
+        return '📚';
+      case BudgetBasket.savings:
+        return '🐷';
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case BudgetBasket.mandatory:
+        return const Color(0xFF43A047);
+      case BudgetBasket.optional:
+        return const Color(0xFF8E24AA);
+      case BudgetBasket.education:
+        return const Color(0xFF1E88E5);
+      case BudgetBasket.savings:
+        return const Color(0xFFF08A24);
+    }
+  }
+}
 
 extension ItemKindInfo on ItemKind {
   String get title {
@@ -14,12 +65,14 @@ extension ItemKindInfo on ItemKind {
         return 'Уход';
       case ItemKind.health:
         return 'Здоровье';
-      case ItemKind.fun:
-        return 'Игры';
-      case ItemKind.clothes:
-        return 'Наряды';
       case ItemKind.home:
-        return 'Уют';
+        return 'Для дома';
+      case ItemKind.fun:
+        return 'Игрушки';
+      case ItemKind.education:
+        return 'Обучение';
+      case ItemKind.decor:
+        return 'Украшения';
     }
   }
 
@@ -31,20 +84,78 @@ extension ItemKindInfo on ItemKind {
         return '🧼';
       case ItemKind.health:
         return '💊';
+      case ItemKind.home:
+        return '🏠';
       case ItemKind.fun:
         return '⚽';
-      case ItemKind.clothes:
-        return '🎀';
-      case ItemKind.home:
-        return '🛏️';
+      case ItemKind.education:
+        return '📚';
+      case ItemKind.decor:
+        return '✨';
     }
   }
 
-  /// Обязательная трата («надо») или желание («хочу»).
+  /// Обязательная трата («надо») или нет.
   bool get mandatory =>
       this == ItemKind.food ||
       this == ItemKind.hygiene ||
-      this == ItemKind.health;
+      this == ItemKind.health ||
+      this == ItemKind.home;
+
+  /// Покупается один раз и остаётся навсегда.
+  bool get permanent =>
+      this == ItemKind.home ||
+      this == ItemKind.education ||
+      this == ItemKind.decor;
+
+  /// Закрыто, пока питомец голоден (сытость ≤ [hungryBlockAt]).
+  bool get blockedWhenHungry =>
+      this == ItemKind.fun || this == ItemKind.education;
+
+  BudgetBasket get basket {
+    if (mandatory) return BudgetBasket.mandatory;
+    if (this == ItemKind.education) return BudgetBasket.education;
+    return BudgetBasket.optional;
+  }
+}
+
+/// Редкость украшения.
+enum Rarity { common, rare, epic }
+
+extension RarityInfo on Rarity {
+  String get title {
+    switch (this) {
+      case Rarity.common:
+        return 'Обычное';
+      case Rarity.rare:
+        return 'Редкое';
+      case Rarity.epic:
+        return 'Эпическое';
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case Rarity.common:
+        return const Color(0xFF607D8B);
+      case Rarity.rare:
+        return const Color(0xFF1E88E5);
+      case Rarity.epic:
+        return const Color(0xFF8E24AA);
+    }
+  }
+
+  /// Радость питомца от нового украшения.
+  int get happiness {
+    switch (this) {
+      case Rarity.common:
+        return 5;
+      case Rarity.rare:
+        return 10;
+      case Rarity.epic:
+        return 20;
+    }
+  }
 }
 
 class ShopItem {
@@ -54,15 +165,21 @@ class ShopItem {
   final int price;
   final ItemKind kind;
 
-  /// Прирост статов при использовании.
+  /// Прирост статов: у расходуемых — при использовании из рюкзачка,
+  /// у постоянных — один раз при покупке.
   final int hunger;
   final int happiness;
   final int cleanliness;
-  final int xp;
   final String effectText;
 
-  /// Ярлык на карточке: «Хит», «Новинка», «Редкое»…
+  /// Ярлык на карточке: «Хит», «Выгодно»…
   final String? badge;
+
+  /// Редкость — только у украшений.
+  final Rarity? rarity;
+
+  /// Доход за день после курса — только у обучения.
+  final int? incomeAfter;
 
   const ShopItem({
     required this.id,
@@ -73,27 +190,56 @@ class ShopItem {
     this.hunger = 0,
     this.happiness = 0,
     this.cleanliness = 0,
-    this.xp = 5,
     required this.effectText,
     this.badge,
+    this.rarity,
+    this.incomeAfter,
   });
 
   bool get mandatory => kind.mandatory;
+  bool get permanent => kind.permanent;
+
+  /// За сколько украшение выкупит магазин.
+  int get resalePrice => (price * resaleRate).round();
 }
+
+/// Питомец голоден при сытости не выше этой — игрушки и обучение закрыты.
+const int hungryBlockAt = 40;
+
+/// Магазин выкупает украшения за 70 % цены.
+const double resaleRate = 0.7;
+
+/// Доход за день без курсов.
+const int startIncome = 50;
 
 /// Скидка дня в процентах.
 const int dealPercent = 30;
 
-/// Товар со скидкой: каждый день новый, чтобы в магазин хотелось заглянуть.
+/// Товар со скидкой — каждый день новый, только из расходуемых.
 ShopItem dealOfDay(int day) {
-  final index = (day * 7 + 3) % shopCatalog.length;
-  return shopCatalog[index];
+  final pool = shopCatalog.where((i) => !i.permanent).toList();
+  return pool[(day * 7 + 3) % pool.length];
 }
 
 int dealPrice(ShopItem item) {
   final price = (item.price * (100 - dealPercent) / 100).round();
   return price < 1 ? 1 : price;
 }
+
+ShopItem? itemById(String id) {
+  for (final i in shopCatalog) {
+    if (i.id == id) return i;
+  }
+  return null;
+}
+
+/// Курсы по порядку: следующий открывается после предыдущего.
+List<ShopItem> get courses =>
+    shopCatalog.where((i) => i.kind == ItemKind.education).toList();
+
+/// Украшения коллекции.
+List<ShopItem> get decorations =>
+    shopCatalog.where((i) => i.kind == ItemKind.decor).toList();
 
 const List<ShopItem> shopCatalog = [
   // ───── Еда ─────
@@ -110,10 +256,9 @@ const List<ShopItem> shopCatalog = [
     id: 'apple',
     title: 'Яблочко',
     emoji: '🍎',
-    price: 8,
+    price: 5,
     kind: ItemKind.food,
     hunger: 15,
-    happiness: 5,
     effectText: 'Хрум-хрум! +15 к сытости 🍎',
   ),
   ShopItem(
@@ -127,13 +272,13 @@ const List<ShopItem> shopCatalog = [
   ),
   ShopItem(
     id: 'cookie',
-    title: 'Печенька',
+    title: 'Лакомство',
     emoji: '🍪',
-    price: 15,
+    price: 20,
     kind: ItemKind.food,
     hunger: 25,
-    happiness: 10,
-    effectText: 'Ням! +25 к сытости 🍪',
+    happiness: 15,
+    effectText: 'Ням! +25 к сытости и +15 к счастью 🍪',
     badge: 'Хит',
   ),
   ShopItem(
@@ -143,7 +288,6 @@ const List<ShopItem> shopCatalog = [
     price: 18,
     kind: ItemKind.food,
     hunger: 30,
-    happiness: 5,
     effectText: 'Свежая рыбка! +30 к сытости 🐟',
   ),
   ShopItem(
@@ -162,29 +306,28 @@ const List<ShopItem> shopCatalog = [
     id: 'soap',
     title: 'Мыло',
     emoji: '🧼',
-    price: 12,
+    price: 10,
     kind: ItemKind.hygiene,
-    cleanliness: 25,
-    effectText: 'Чистота! +25 к чистоте 🧼',
+    cleanliness: 30,
+    effectText: 'Чистота! +30 к чистоте 🧼',
   ),
   ShopItem(
     id: 'shower',
     title: 'Тёплый душ',
     emoji: '🚿',
-    price: 18,
+    price: 15,
     kind: ItemKind.hygiene,
-    cleanliness: 35,
-    effectText: 'Свежесть! +35 к чистоте 🚿',
+    cleanliness: 40,
+    effectText: 'Свежесть! +40 к чистоте 🚿',
   ),
   ShopItem(
     id: 'bath',
     title: 'Ванна с пеной',
     emoji: '🛁',
-    price: 28,
+    price: 20,
     kind: ItemKind.hygiene,
-    cleanliness: 55,
-    happiness: 5,
-    effectText: 'Пузырьки! +55 к чистоте 🛁',
+    cleanliness: 50,
+    effectText: 'Пузырьки! +50 к чистоте 🛁',
   ),
 
   // ───── Здоровье ─────
@@ -195,9 +338,8 @@ const List<ShopItem> shopCatalog = [
     price: 20,
     kind: ItemKind.health,
     hunger: 10,
-    happiness: 5,
-    xp: 10,
-    effectText: 'Бодрость! +10 к сытости и +10 опыта 💊',
+    happiness: 10,
+    effectText: 'Бодрость! +10 к сытости и счастью 💊',
   ),
   ShopItem(
     id: 'tea',
@@ -218,25 +360,53 @@ const List<ShopItem> shopCatalog = [
     hunger: 20,
     happiness: 20,
     cleanliness: 20,
-    xp: 15,
-    effectText: 'Здоров! +20 ко всему и +15 опыта 🏥',
+    effectText: 'Здоров! +20 ко всему 🏥',
   ),
 
-  // ───── Игры ─────
+  // ───── Для дома: обязательные, покупаются один раз ─────
+  ShopItem(
+    id: 'bowl',
+    title: 'Миска',
+    emoji: '🥣',
+    price: 5,
+    kind: ItemKind.home,
+    happiness: 5,
+    effectText: 'Теперь есть из чего кушать!',
+  ),
+  ShopItem(
+    id: 'drinker',
+    title: 'Поилка',
+    emoji: '🚰',
+    price: 15,
+    kind: ItemKind.home,
+    happiness: 5,
+    effectText: 'Свежая вода всегда рядом!',
+  ),
+  ShopItem(
+    id: 'bed',
+    title: 'Лежанка',
+    emoji: '🛏️',
+    price: 50,
+    kind: ItemKind.home,
+    happiness: 15,
+    effectText: 'Сладкий сон на своём месте!',
+  ),
+
+  // ───── Игрушки ─────
   ShopItem(
     id: 'ball',
     title: 'Мячик',
     emoji: '⚽',
-    price: 20,
+    price: 15,
     kind: ItemKind.fun,
-    happiness: 25,
-    effectText: 'Весело! +25 к счастью ⚽',
+    happiness: 20,
+    effectText: 'Весело! +20 к счастью ⚽',
   ),
   ShopItem(
     id: 'balloon',
     title: 'Воздушный шарик',
     emoji: '🎈',
-    price: 12,
+    price: 10,
     kind: ItemKind.fun,
     happiness: 15,
     effectText: 'Летит! +15 к счастью 🎈',
@@ -245,125 +415,248 @@ const List<ShopItem> shopCatalog = [
     id: 'paints',
     title: 'Краски',
     emoji: '🎨',
-    price: 25,
+    price: 20,
     kind: ItemKind.fun,
     happiness: 25,
-    xp: 10,
-    effectText: 'Шедевр! +25 к счастью и +10 опыта 🎨',
+    effectText: 'Шедевр! +25 к счастью 🎨',
   ),
   ShopItem(
     id: 'teddy',
     title: 'Плюшевый мишка',
     emoji: '🧸',
-    price: 40,
+    price: 30,
     kind: ItemKind.fun,
-    happiness: 40,
-    xp: 10,
-    effectText: 'Обнимашки! +40 к счастью 🧸',
+    happiness: 35,
+    effectText: 'Обнимашки! +35 к счастью 🧸',
   ),
   ShopItem(
     id: 'board_game',
     title: 'Настольная игра',
     emoji: '🎲',
-    price: 35,
+    price: 50,
     kind: ItemKind.fun,
-    happiness: 35,
-    xp: 10,
-    effectText: 'Твой ход! +35 к счастью 🎲',
+    happiness: 50,
+    effectText: 'Твой ход! +50 к счастью 🎲',
     badge: 'Новинка',
   ),
+
+  // ───── Обучение: курсы по порядку, доход растёт ─────
   ShopItem(
-    id: 'console',
-    title: 'Игровая приставка',
-    emoji: '🎮',
-    price: 90,
-    kind: ItemKind.fun,
-    happiness: 60,
-    xp: 20,
-    effectText: 'Играем! +60 к счастью 🎮',
+    id: 'course_abc',
+    title: 'Азбука финансов',
+    emoji: '📘',
+    price: 20,
+    kind: ItemKind.education,
+    incomeAfter: 60,
+    effectText: 'Доход за день: 60 🪙',
+  ),
+  ShopItem(
+    id: 'course_saver',
+    title: 'Мастер накоплений',
+    emoji: '📗',
+    price: 40,
+    kind: ItemKind.education,
+    incomeAfter: 75,
+    effectText: 'Доход за день: 75 🪙',
+  ),
+  ShopItem(
+    id: 'course_future',
+    title: 'Вклад в будущее',
+    emoji: '📙',
+    price: 80,
+    kind: ItemKind.education,
+    incomeAfter: 95,
+    effectText: 'Доход за день: 95 🪙',
+  ),
+  ShopItem(
+    id: 'course_math',
+    title: 'Учебник математики',
+    emoji: '📕',
+    price: 160,
+    kind: ItemKind.education,
+    incomeAfter: 120,
+    effectText: 'Доход за день: 120 🪙',
   ),
 
-  // ───── Наряды ─────
+  // ───── Украшения: коллекция из 20 (10 обычных, 6 редких, 4 эпических) ─────
   ShopItem(
-    id: 'bow',
+    id: 'decor_bow',
     title: 'Бантик',
     emoji: '🎀',
-    price: 15,
-    kind: ItemKind.clothes,
-    happiness: 15,
-    effectText: 'Красота! +15 к счастью 🎀',
+    price: 10,
+    kind: ItemKind.decor,
+    rarity: Rarity.common,
+    effectText: 'В коллекцию!',
   ),
   ShopItem(
-    id: 'scarf',
-    title: 'Шарфик',
-    emoji: '🧣',
-    price: 25,
-    kind: ItemKind.clothes,
-    happiness: 20,
-    effectText: 'Тепло и модно! +20 к счастью 🧣',
+    id: 'decor_socks',
+    title: 'Носочки',
+    emoji: '🧦',
+    price: 12,
+    kind: ItemKind.decor,
+    rarity: Rarity.common,
+    effectText: 'В коллекцию!',
   ),
   ShopItem(
-    id: 'hat',
-    title: 'Шляпа',
-    emoji: '🎩',
-    price: 30,
-    kind: ItemKind.clothes,
-    happiness: 25,
-    effectText: 'Какой франт! +25 к счастью 🎩',
-  ),
-  ShopItem(
-    id: 'crown',
-    title: 'Корона',
-    emoji: '👑',
-    price: 120,
-    kind: ItemKind.clothes,
-    happiness: 70,
-    xp: 25,
-    effectText: 'Королевский питомец! +70 к счастью 👑',
-    badge: 'Редкое',
-  ),
-
-  // ───── Уют ─────
-  ShopItem(
-    id: 'flower',
-    title: 'Цветок в горшке',
+    id: 'decor_tulip',
+    title: 'Тюльпан',
     emoji: '🌷',
-    price: 18,
-    kind: ItemKind.home,
-    happiness: 15,
-    cleanliness: 5,
-    effectText: 'Красиво! +15 к счастью 🌷',
+    price: 14,
+    kind: ItemKind.decor,
+    rarity: Rarity.common,
+    effectText: 'В коллекцию!',
   ),
   ShopItem(
-    id: 'lamp',
+    id: 'decor_sunflower',
+    title: 'Подсолнух',
+    emoji: '🌻',
+    price: 16,
+    kind: ItemKind.decor,
+    rarity: Rarity.common,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_chime',
+    title: 'Колокольчик',
+    emoji: '🎐',
+    price: 18,
+    kind: ItemKind.decor,
+    rarity: Rarity.common,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_rainbow',
+    title: 'Радуга',
+    emoji: '🌈',
+    price: 20,
+    kind: ItemKind.decor,
+    rarity: Rarity.common,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_star',
+    title: 'Звёздочка',
+    emoji: '⭐',
+    price: 22,
+    kind: ItemKind.decor,
+    rarity: Rarity.common,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_clover',
+    title: 'Клевер',
+    emoji: '🍀',
+    price: 24,
+    kind: ItemKind.decor,
+    rarity: Rarity.common,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_flags',
+    title: 'Флажки',
+    emoji: '🎏',
+    price: 26,
+    kind: ItemKind.decor,
+    rarity: Rarity.common,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_lamp',
     title: 'Ночник',
     emoji: '💡',
-    price: 22,
-    kind: ItemKind.home,
-    happiness: 20,
-    effectText: 'Не страшно ночью! +20 к счастью 💡',
+    price: 30,
+    kind: ItemKind.decor,
+    rarity: Rarity.common,
+    effectText: 'В коллекцию!',
   ),
   ShopItem(
-    id: 'bed',
-    title: 'Лежанка',
-    emoji: '🛏️',
-    price: 50,
-    kind: ItemKind.home,
-    happiness: 30,
-    cleanliness: 10,
-    xp: 10,
-    effectText: 'Сладкий сон! +30 к счастью 🛏️',
+    id: 'decor_hat',
+    title: 'Шляпа',
+    emoji: '🎩',
+    price: 40,
+    kind: ItemKind.decor,
+    rarity: Rarity.rare,
+    effectText: 'В коллекцию!',
   ),
   ShopItem(
-    id: 'house',
-    title: 'Домик',
-    emoji: '🏠',
-    price: 150,
-    kind: ItemKind.home,
-    happiness: 80,
-    cleanliness: 20,
-    xp: 30,
-    effectText: 'Свой дом! +80 к счастью и +30 опыта 🏠',
-    badge: 'Мечта',
+    id: 'decor_glasses',
+    title: 'Очки',
+    emoji: '🕶️',
+    price: 48,
+    kind: ItemKind.decor,
+    rarity: Rarity.rare,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_backpack',
+    title: 'Рюкзачок',
+    emoji: '🎒',
+    price: 55,
+    kind: ItemKind.decor,
+    rarity: Rarity.rare,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_lantern',
+    title: 'Фонарик',
+    emoji: '🏮',
+    price: 62,
+    kind: ItemKind.decor,
+    rarity: Rarity.rare,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_violin',
+    title: 'Скрипка',
+    emoji: '🎻',
+    price: 70,
+    kind: ItemKind.decor,
+    rarity: Rarity.rare,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_carousel',
+    title: 'Карусель',
+    emoji: '🎠',
+    price: 80,
+    kind: ItemKind.decor,
+    rarity: Rarity.rare,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_crown',
+    title: 'Корона',
+    emoji: '👑',
+    price: 100,
+    kind: ItemKind.decor,
+    rarity: Rarity.epic,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_castle',
+    title: 'Замок',
+    emoji: '🏰',
+    price: 140,
+    kind: ItemKind.decor,
+    rarity: Rarity.epic,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_rocket',
+    title: 'Ракета',
+    emoji: '🚀',
+    price: 170,
+    kind: ItemKind.decor,
+    rarity: Rarity.epic,
+    effectText: 'В коллекцию!',
+  ),
+  ShopItem(
+    id: 'decor_diamond',
+    title: 'Алмаз',
+    emoji: '💎',
+    price: 200,
+    kind: ItemKind.decor,
+    rarity: Rarity.epic,
+    effectText: 'В коллекцию!',
   ),
 ];

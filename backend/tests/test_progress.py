@@ -88,14 +88,14 @@ def test_negative_balance_rejected(client, snapshot):
     assert client.put(URL, json=snapshot).status_code == 422
 
 
-def test_equipped_skin_must_be_owned(client, snapshot):
-    """Надеть можно только купленный образ."""
-    snapshot["skins"] = {"owned": [], "equipped": "cat_astronaut"}
+def test_owned_items_must_be_unique(client, snapshot):
+    """Покупка навсегда (вещь для дома, курс, украшение) — одна на id."""
+    snapshot["owned"] = ["bowl", "bowl"]
 
     response = client.put(URL, json=snapshot)
 
     assert response.status_code == 422
-    assert "образ" in response.text
+    assert "owned" in response.text
 
 
 def test_solved_lesson_cannot_be_in_retry(client, snapshot):
@@ -142,12 +142,13 @@ def test_unknown_content_ids_become_warnings(client, snapshot):
     assert client.get(URL).status_code == 200, "прогресс всё равно сохранён"
 
 
-def test_skin_of_other_species_is_warning(client, snapshot):
-    snapshot["pet"]["species_id"] = "dog"
+def test_consumable_in_owned_is_warning(client, snapshot):
+    """Расходуемый товар хранится в рюкзачке, а не в покупках навсегда."""
+    snapshot["owned"].append("milk")
 
     body = client.put(URL, json=snapshot).json()
 
-    assert [warning["code"] for warning in body["warnings"]] == ["skin_species_mismatch"]
+    assert [warning["code"] for warning in body["warnings"]] == ["not_permanent"]
 
 
 def test_delete_removes_server_copy(client, snapshot):

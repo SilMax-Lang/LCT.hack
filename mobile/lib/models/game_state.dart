@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,16 +13,20 @@ import 'player_profile.dart';
 
 int _stat(int v) => v < 0 ? 0 : (v > 100 ? 100 : v);
 
-/// Доход за период для конкретного уровня: 40 + уровень × 10.
-///
-/// Уровень растёт — растёт доход. Это главная «плюшка» развития, ради неё
-/// и стоит вкладывать монетки: об этом же говорит «Секрет игры».
-int incomeForLevel(int level) => 40 + level * 10;
+// ───── Экономика (по документу «Игровая экономика Финни») ─────
 
-/// Сколько монет даём за каждый новый уровень.
+/// Доход за день по числу пройденных курсов: 50 → 60 → 75 → 95 → 120.
+int incomeForCourses(int coursesDone) {
+  if (coursesDone <= 0) return startIncome;
+  final list = courses;
+  final i = math.min(coursesDone, list.length) - 1;
+  return list[i].incomeAfter ?? startIncome;
+}
+
+/// Сколько монет даём за каждый новый уровень питомца.
 const int levelUpCoins = 25;
 
-/// Бонус за возвращение в новый день.
+/// Бонус за возвращение в новый календарный день.
 const int dailyBonus = 15;
 
 /// Сколько стоит перекрасить питомца в магазине.
@@ -32,13 +37,35 @@ const int dayHungerCost = 15;
 const int dayHappinessCost = 10;
 const int dayCleanlinessCost = 12;
 
+/// Опыт: за конец дня и потолок опыта за один игровой день.
+/// (За задание — [lessonXp].) Предметы и копилка опыта не дают.
+const int endOfDayXp = 10;
+const int maxXpPerDay = 25;
+
+/// Вклад в копилке: 20 % за игровой год, не больше 500 за раз.
+/// Игровой год — 5 дней: так проценты видно уже в демо-режиме.
+const double depositRate = 0.2;
+const int interestCap = 500;
+const int daysPerYear = 5;
+
+/// Бонус огонька за серию дней. После 7 дней — +10 каждые следующие 7.
+int streakBonusFor(int streak) {
+  if (streak == 3) return 10;
+  if (streak == 7) return 20;
+  if (streak > 7 && streak % 7 == 0) return 10;
+  return 0;
+}
+
+/// Шаги плана бюджета.
+const int planStepSmall = 5;
+const int planStepBig = 10;
+
 /// Событие «питомец вырос».
 ///
 /// Награда начисляется сразу, а событие ждёт в [GameState.pendingLevelUp],
 /// пока экран нового уровня его не заберёт: так он не потеряется, если
-/// опыт прилетел из другого экрана (копилка, задания).
+/// опыт прилетел из другого экрана.
 class LevelUpEvent {
-  /// Уровень до роста и после.
   final int fromLevel;
   final int toLevel;
 
@@ -53,9 +80,6 @@ class LevelUpEvent {
 
   int get levelsGained => toLevel - fromLevel;
 
-  int get incomeFrom => incomeForLevel(fromLevel);
-  int get incomeTo => incomeForLevel(toLevel);
-
   String get stageFrom => Pet.stageForLevel(fromLevel);
   String get stageTo => Pet.stageForLevel(toLevel);
 
@@ -63,16 +87,17 @@ class LevelUpEvent {
   bool get stageChanged => stageFrom != stageTo;
 }
 
-/// Итоги перехода к новому периоду — из них собирается «бумажка» с подсчётом.
+/// Итоги перехода к новому периоду — из них собирается «бумажка».
 class DaySummary {
-  /// Новый день.
   final int day;
 
-  /// Сколько монет принёс день.
+  /// Доход за день (зависит от курсов).
   final int income;
 
-  /// Сколько на самом деле потратил питомец. Не номинальные «−15», а реальная
-  /// просадка: если сытость была 10, потеряется 10, и в бумажке будет 10.
+  /// Проценты по вкладу (0, если год ещё не прошёл).
+  final int interest;
+
+  /// Реальная просадка статов, а не номинальные «−15».
   final int hungerLost;
   final int happinessLost;
   final int cleanlinessLost;
@@ -85,6 +110,7 @@ class DaySummary {
   const DaySummary({
     required this.day,
     required this.income,
+    this.interest = 0,
     required this.hungerLost,
     required this.happinessLost,
     required this.cleanlinessLost,
@@ -104,25 +130,32 @@ class DaySummary {
 class LessonResult {
   final bool correct;
 
-  /// Монеты начислены только за первое верное решение.
+  /// Монеты начислены только за первое верное решение и не больше чем
+  /// за [rewardedLessonsPerDay] заданий в день.
   final int reward;
 
   /// Задание уже было решено раньше — награды нет, это повторение.
   final bool alreadySolved;
 
+  /// Решено впервые, но монеты за задания на сегодня уже получены.
+  final bool dailyLimitReached;
+
   const LessonResult({
     required this.correct,
     required this.reward,
     required this.alreadySolved,
+    this.dailyLimitReached = false,
   });
 }
 
-/// Общее состояние игры: профиль, питомец, деньги, цель,
-/// задания, инвентарь, периоды.
+/// Результат покупки.
+enum BuyResult { ok, noMoney, hungry, owned, locked }
+
+/// Общее состояние игры: профиль, питомец, деньги, цель, задания,
+/// рюкзачок, покупки навсегда, план бюджета, огонёк.
 ///
 /// Живёт в одном ChangeNotifier и раздаётся через [GameStateScope]
-/// (см. lib/app.dart), чтобы не тянуть внешние state-менеджмент пакеты.
-/// Сохраняется в SharedPreferences после каждого изменения.
+/// (см. lib/app.dart). Сохраняется в SharedPreferences после изменений.
 class GameState extends ChangeNotifier {
   static const _prefsKey = 'finny_state_v1';
 
@@ -132,7 +165,7 @@ class GameState extends ChangeNotifier {
   /// Монетки в кошельке.
   int balance = 60;
 
-  /// Монетки в копилке.
+  /// Монетки в копилке (вклад).
   int savings = 0;
   String goalName = defaultGoal.title;
   String goalEmoji = defaultGoal.emoji;
@@ -142,20 +175,20 @@ class GameState extends ChangeNotifier {
   int day = 1;
   bool onboardingDone = false;
 
-  /// Тёмная тема включена (переключатель 🌙/☀️ в шапке)?
+  /// Тёмная тема включена?
   bool isDark = false;
 
   /// Одноразовый флаг: только что прошли онбординг — показать «Секрет игры».
   bool justFinishedOnboarding = false;
 
-  /// id предмета -> количество.
+  /// Расходуемые предметы в рюкзачке: id → количество.
   Map<String, int> inventory = {'milk': 1, 'soap': 1, 'ball': 1};
 
-  /// Решённые задания с дорог «Математика» и «Финансы».
-  Set<String> lessonsSolved = {};
+  /// Купленное навсегда: вещи для дома, курсы, украшения.
+  Set<String> owned = {};
 
-  /// Временные задачи «Повтори»: задания, где ребёнок ошибся. Ошибка
-  /// не отнимает прогресс — задание просто просит попробовать ещё раз.
+  /// Решённые задания и «Повтори» (задания, где была ошибка).
+  Set<String> lessonsSolved = {};
   Set<String> lessonsRetry = {};
 
   /// Сколько всего было ошибок — для родительского режима.
@@ -164,9 +197,14 @@ class GameState extends ChangeNotifier {
   /// День последнего решённого задания (для подсказки «давно не решали»).
   int lessonGivenDay = 1;
 
+  /// За сколько заданий сегодня уже дали монеты.
+  int rewardedToday = 0;
+
+  /// Сколько опыта питомец получил за сегодня (потолок [maxXpPerDay]).
+  int xpToday = 0;
+
   /// Дата последнего ежедневного бонуса (yyyy-MM-dd).
   String? lastBonusDate;
-
 
   /// «Огонёк»: сколько дней подряд ребёнок что-то делал в игре.
   int streak = 0;
@@ -174,27 +212,66 @@ class GameState extends ChangeNotifier {
   /// Дата последнего действия (yyyy-MM-dd) — для подсчёта огонька.
   String? lastActionDate;
 
-  /// Счётчик действий за сессию: растёт на каждое действие, по нему
-  /// огонёк в шапке вспыхивает. Не сохраняется.
+  /// Сколько процентов принёс вклад за всё время.
+  int interestTotal = 0;
+
+  // ───── План бюджета на день ─────
+
+  /// Сколько монет было в начале дня — столько можно распределить.
+  int planBudget = 60;
+
+  /// План по корзинам и подтверждён ли он. После подтверждения план не
+  /// меняется — только сравнение «план / факт».
+  Map<BudgetBasket, int> plan = _emptyBaskets();
+  bool planConfirmed = false;
+
+  /// Факт за день: сколько реально ушло в каждую корзину.
+  Map<BudgetBasket, int> fact = _emptyBaskets();
+
+  static Map<BudgetBasket, int> _emptyBaskets() =>
+      {for (final b in BudgetBasket.values) b: 0};
+
+  /// Счётчик действий за сессию: по нему огонёк в шапке вспыхивает.
   int actionPulse = 0;
 
   /// Помощник в заданиях уже показывался (выезжает один раз).
   bool questsGuideSeen = false;
 
-  /// Бонус за возвращение, который ещё не показали на главной.
-  /// Показывается плашкой, а не диалогом. Не сохраняется.
+  /// Бонус, который ещё не показали на главной (плашкой), и его повод.
   int pendingBonus = 0;
+  String pendingBonusText = '';
 
-  /// Новый уровень, который ещё не показали ребёнку: награда уже начислена,
-  /// ждёт только экран. Живёт до перезапуска — показывать «поздравление»
-  /// после холодного старта было бы странно.
+  /// Новый уровень, который ещё не показали ребёнку.
   LevelUpEvent? pendingLevelUp;
 
-  /// Доход за новый период. Растёт с уровнем питомца.
-  int get baseIncome => incomeForLevel(pet?.level ?? 1);
+  // ───── Производные значения ─────
 
-  /// Забирает событие роста для экрана нового уровня.
-  /// Возвращает null, если показывать нечего.
+  int get coursesDone => courses.where((c) => owned.contains(c.id)).length;
+
+  /// Доход за новый период. Растёт с курсами.
+  int get baseIncome => incomeForCourses(coursesDone);
+
+  /// Следующий курс, который можно купить (или null, если все пройдены).
+  ShopItem? get nextCourse {
+    for (final c in courses) {
+      if (!owned.contains(c.id)) return c;
+    }
+    return null;
+  }
+
+  /// Питомец голоден — игрушки и обучение закрыты.
+  bool get petHungry => (pet?.hunger ?? 100) <= hungryBlockAt;
+
+  /// Сколько дней осталось до начисления процентов.
+  int get daysToInterest {
+    final r = day % daysPerYear;
+    return r == 0 ? daysPerYear : daysPerYear - r;
+  }
+
+  /// Сколько принесёт вклад в конце года при нынешней копилке.
+  int get expectedInterest =>
+      math.min((savings * depositRate).floor(), interestCap);
+
   LevelUpEvent? consumeLevelUp() {
     final event = pendingLevelUp;
     pendingLevelUp = null;
@@ -203,10 +280,7 @@ class GameState extends ChangeNotifier {
 
   double get goalProgress {
     if (goalTarget <= 0) return 0;
-    final p = savings / goalTarget;
-    if (p < 0) return 0;
-    if (p > 1) return 1;
-    return p;
+    return (savings / goalTarget).clamp(0.0, 1.0);
   }
 
   int get goalLeft {
@@ -233,7 +307,6 @@ class GameState extends ChangeNotifier {
     return null;
   }
 
-  /// Сколько заданий решено на дороге.
   int solvedOn(LessonTrack track) =>
       lessonsOf(track).where((l) => lessonsSolved.contains(l.id)).length;
 
@@ -243,30 +316,31 @@ class GameState extends ChangeNotifier {
 
   String get nickname => profile?.nickname ?? 'Друг';
 
-  /// Возраст игрока. `null` — сейв, сделанный до появления вопроса о возрасте.
   int? get age => profile?.age;
 
-  Future<void> init() async {
-    await load();
-  }
+  Future<void> init() => load();
 
   String _today() => DateTime.now().toIso8601String().substring(0, 10);
 
-  /// Ежедневный бонус +15 монет. Возвращает true, если бонус выдан
-  /// (тогда UI показывает диалог). Вызывать с главного экрана
-  /// после первой отрисовки кадра.
+  // ───── Бонусы и огонёк ─────
+
+  /// Ежедневный бонус. True — выдан (главная покажет плашку).
   bool claimDailyBonusIfNeeded() {
     if (!onboardingDone || pet == null) return false;
     if (lastBonusDate == _today()) return false;
     lastBonusDate = _today();
     balance += dailyBonus;
-    pendingBonus = dailyBonus;
+    _showBonus(dailyBonus, '${pet!.name} рад тебя видеть!');
     notifyListeners();
     save();
     return true;
   }
 
-  /// Помощник в заданиях показан — больше не выезжает.
+  void _showBonus(int amount, String text) {
+    pendingBonus += amount;
+    pendingBonusText = text;
+  }
+
   void markQuestsGuideSeen() {
     if (questsGuideSeen) return;
     questsGuideSeen = true;
@@ -274,15 +348,16 @@ class GameState extends ChangeNotifier {
     save();
   }
 
-  /// Плашку бонуса закрыли.
   void dismissBonus() {
     if (pendingBonus == 0) return;
     pendingBonus = 0;
+    pendingBonusText = '';
     notifyListeners();
   }
 
-  /// Любое полезное действие: кормление, покупка, копилка, задание.
-  /// Первое действие за календарный день продлевает огонёк.
+  /// Полезное действие: кормление, покупка, копилка, задание.
+  /// Первое действие за календарный день продлевает огонёк; на 3-й и
+  /// 7-й день подряд (и каждые следующие 7) — бонус монетами.
   void _registerAction() {
     actionPulse += 1;
     final today = _today();
@@ -293,114 +368,49 @@ class GameState extends ChangeNotifier {
         .substring(0, 10);
     streak = lastActionDate == yesterday ? streak + 1 : 1;
     lastActionDate = today;
-  }
-
-  /// Огонёк горит, если сегодня уже было действие.
-  bool get streakLitToday => lastActionDate == _today();
-
-  /// Перекрасить питомца в магазине. Та же окраска — бесплатно (ничего
-  /// не меняется). False — не хватило монет.
-  bool recolorPet(PetVariant variant) {
-    final p = pet;
-    if (p == null) return false;
-    if (p.variant == variant) return true;
-    if (balance < recolorPrice) return false;
-    balance -= recolorPrice;
-    p.variant = variant;
-    _registerAction();
-    notifyListeners();
-    save();
-    return true;
-  }
-
-  // ───── Режим эксперта (настройки → «Для экспертов») ─────
-
-  /// Опыт без прокрутки дней. Уровень и награды — как в обычной игре.
-  void devAddXp(int amount) {
-    _addXp(amount);
-    notifyListeners();
-    save();
-  }
-
-  void devAddCoins(int amount) {
-    balance += amount;
-    notifyListeners();
-    save();
-  }
-
-  /// Статы питомца на 100 — чтобы проверять экраны без кормления.
-  void devRestorePet() {
-    final p = pet;
-    if (p == null) return;
-    p.hunger = 100;
-    p.happiness = 100;
-    p.cleanliness = 100;
-    notifyListeners();
-    save();
-  }
-
-  /// Сразу поставить уровень (без наград) — посмотреть модель нужного
-  /// возраста: 1–11 малыш, 12–34 подросток, 35+ взрослый.
-  void devSetLevel(int level) {
-    final p = pet;
-    if (p == null || level < 1) return;
-    p.level = level;
-    p.xp = 0;
-    pendingLevelUp = null;
-    notifyListeners();
-    save();
-  }
-
-  /// Поставить счастье — проверить эмоцию модели (<33, 33–66, >66).
-  void devSetHappiness(int value) {
-    final p = pet;
-    if (p == null) return;
-    p.happiness = _stat(value);
-    notifyListeners();
-    save();
-  }
-
-  /// Прокрутить несколько дней подряд: доход и траты — как в игре.
-  void devSkipDays(int days) {
-    for (var i = 0; i < days; i++) {
-      nextDay();
+    final bonus = streakBonusFor(streak);
+    if (bonus > 0) {
+      balance += bonus;
+      _showBonus(bonus, '🔥 Огонёк горит $streak дн. подряд!');
     }
   }
 
-  /// Отметить все задания решёнными (без монет) — посмотреть финиш дорог.
-  void devSolveAllLessons() {
-    lessonsSolved = {for (final l in lessonsCatalog) l.id};
-    lessonsRetry = {};
-    notifyListeners();
-    save();
-  }
+  bool get streakLitToday => lastActionDate == _today();
 
-  /// Снова показать помощника в заданиях.
-  void devResetGuide() {
-    questsGuideSeen = false;
-    notifyListeners();
-    save();
-  }
+  // ───── Опыт ─────
 
-  /// +1 день к огоньку (серия продлена сегодня).
-  void devBumpStreak() {
-    streak += 1;
-    lastActionDate = _today();
-    actionPulse += 1;
-    notifyListeners();
-    save();
-  }
-
-  /// Статы питомца на минимум — проверить грустное настроение.
-  void devDrainPet() {
+  /// Начисляет опыт. С [capped] — не больше [maxXpPerDay] за день.
+  /// Новый уровень: +25 монет, статы 100, событие для экрана роста.
+  int _addXp(int amount, {bool capped = true}) {
     final p = pet;
-    if (p == null) return;
-    p.hunger = 10;
-    p.happiness = 10;
-    p.cleanliness = 10;
-    notifyListeners();
-    save();
+    if (p == null || amount <= 0) return 0;
+    final give = capped ? math.min(amount, maxXpPerDay - xpToday) : amount;
+    if (give <= 0) return 0;
+    if (capped) xpToday += give;
+
+    final fromLevel = p.level;
+    p.xp += give;
+    while (p.xp >= 100) {
+      p.xp -= 100;
+      p.level += 1;
+    }
+    if (p.level != fromLevel) {
+      final gained = p.level - fromLevel;
+      final coins = levelUpCoins * gained;
+      balance += coins;
+      p.hunger = 100;
+      p.happiness = 100;
+      p.cleanliness = 100;
+      pendingLevelUp = LevelUpEvent(
+        fromLevel: pendingLevelUp?.fromLevel ?? fromLevel,
+        toLevel: p.level,
+        coins: (pendingLevelUp?.coins ?? 0) + coins,
+      );
+    }
+    return give;
   }
+
+  // ───── Профиль ─────
 
   Future<void> createProfile({
     required String nickname,
@@ -424,6 +434,16 @@ class GameState extends ChangeNotifier {
       xp: 0,
       level: 1,
     );
+    _resetProgress();
+    lastBonusDate = _today();
+    onboardingDone = true;
+    justFinishedOnboarding = true;
+    notifyListeners();
+    await save();
+  }
+
+  /// Всё игровое — к началу (профиль и тему не трогает).
+  void _resetProgress() {
     balance = 60;
     savings = 0;
     goalName = defaultGoal.title;
@@ -431,113 +451,150 @@ class GameState extends ChangeNotifier {
     goalTarget = defaultGoal.price;
     day = 1;
     inventory = {'milk': 1, 'soap': 1, 'ball': 1};
+    owned = {};
     lessonsSolved = {};
     lessonsRetry = {};
     lessonMistakes = 0;
     lessonGivenDay = 1;
+    rewardedToday = 0;
+    xpToday = 0;
     streak = 0;
     lastActionDate = null;
+    interestTotal = 0;
     questsGuideSeen = false;
-    lastBonusDate = _today();
     pendingLevelUp = null;
-    onboardingDone = true;
-    justFinishedOnboarding = true;
-    notifyListeners();
-    await save();
+    pendingBonus = 0;
+    pendingBonusText = '';
+    actionPulse = 0;
+    _startPlan();
   }
 
-  /// Начисляет опыт. Если питомец дорос до нового уровня — сразу выдаёт
-  /// награду и запоминает событие, чтобы экран мог его показать.
-  ///
-  /// Доход за день растёт сам (он считается от уровня), отдельно его
-  /// повышать не нужно — экран просто показывает разницу.
-  void _addXp(int amount) {
-    final p = pet;
-    if (p == null || amount <= 0) return;
-    final fromLevel = p.level;
-    p.xp += amount;
-    while (p.xp >= 100) {
-      p.xp -= 100;
-      p.level += 1;
-    }
-    if (p.level == fromLevel) return;
-
-    final gained = p.level - fromLevel;
-    final coins = levelUpCoins * gained;
-    balance += coins;
-    p.hunger = 100;
-    p.happiness = 100;
-    p.cleanliness = 100;
-    pendingLevelUp = LevelUpEvent(
-      fromLevel: fromLevel,
-      toLevel: p.level,
-      coins: coins,
-    );
+  void _startPlan() {
+    planBudget = balance;
+    plan = _emptyBaskets();
+    fact = _emptyBaskets();
+    planConfirmed = false;
   }
 
-  /// Использовать предмет из инвентаря.
-  /// Возвращает текст эффекта или null, если предмета нет.
-  String? useItem(String itemId) {
-    final count = inventory[itemId] ?? 0;
-    final p = pet;
-    if (count <= 0 || p == null) return null;
-    final item = shopCatalog.firstWhere((e) => e.id == itemId);
-    inventory[itemId] = count - 1;
-    p.hunger = _stat(p.hunger + item.hunger);
-    p.happiness = _stat(p.happiness + item.happiness);
-    p.cleanliness = _stat(p.cleanliness + item.cleanliness);
-    _addXp(item.xp);
-    _registerAction();
+  void updateAge(int age) {
+    final p = profile;
+    if (p == null || !PlayerProfile.isValidAge(age)) return;
+    profile = p.copyWith(age: age);
     notifyListeners();
     save();
-    return item.effectText;
   }
 
-  /// Купить предмет в рюкзачок. False — не хватило монет.
-  bool buyItem(String itemId) {
-    final item = shopCatalog.firstWhere((e) => e.id == itemId);
-    final price = priceOf(item);
-    if (balance < price) return false;
-    balance -= price;
-    inventory[itemId] = (inventory[itemId] ?? 0) + 1;
-    _registerAction();
-    notifyListeners();
-    save();
-    return true;
-  }
-
-  /// Положить монетки в копилку. False — не хватило монет.
-  bool deposit(int amount) {
-    if (amount <= 0 || balance < amount) return false;
-    balance -= amount;
-    savings += amount;
-    _addXp(5);
-    _registerAction();
-    notifyListeners();
-    save();
-    return true;
-  }
-
-  /// Забрать монетки из копилки.
-  bool withdraw(int amount) {
-    if (amount <= 0 || savings < amount) return false;
-    savings -= amount;
-    balance += amount;
-    notifyListeners();
-    save();
-    return true;
-  }
-
-  /// Переключить светлую/тёмную тему.
   void toggleTheme() {
     isDark = !isDark;
     notifyListeners();
     save();
   }
 
-  /// Сменить цель копилки: готовую из списка или свою.
-  /// Накопленное остаётся в копилке — меняется только то, на что копим.
-  /// False — цель не подходит (пустое название или слишком мало монет).
+  // ───── Магазин ─────
+
+  /// Можно ли купить и почему нет (для подсказки на кнопке).
+  BuyResult canBuy(ShopItem item) {
+    if (item.permanent && owned.contains(item.id)) return BuyResult.owned;
+    if (item.kind == ItemKind.education && nextCourse?.id != item.id) {
+      return BuyResult.locked;
+    }
+    if (item.kind.blockedWhenHungry && petHungry) return BuyResult.hungry;
+    if (balance < priceOf(item)) return BuyResult.noMoney;
+    return BuyResult.ok;
+  }
+
+  /// Купить. Расходуемое — в рюкзачок; постоянное — навсегда, эффект сразу.
+  BuyResult buyItem(String itemId) {
+    final item = itemById(itemId);
+    if (item == null) return BuyResult.locked;
+    final check = canBuy(item);
+    if (check != BuyResult.ok) return check;
+    final price = priceOf(item);
+    balance -= price;
+    fact[item.kind.basket] = (fact[item.kind.basket] ?? 0) + price;
+    if (item.permanent) {
+      owned.add(item.id);
+      final p = pet;
+      if (p != null) {
+        final joy = item.happiness + (item.rarity?.happiness ?? 0);
+        p.happiness = _stat(p.happiness + joy);
+      }
+    } else {
+      inventory[itemId] = (inventory[itemId] ?? 0) + 1;
+    }
+    _registerAction();
+    notifyListeners();
+    save();
+    return BuyResult.ok;
+  }
+
+  /// Продать украшение за 70 % цены.
+  bool sellDecoration(String itemId) {
+    final item = itemById(itemId);
+    if (item == null || item.kind != ItemKind.decor) return false;
+    if (!owned.remove(itemId)) return false;
+    balance += item.resalePrice;
+    notifyListeners();
+    save();
+    return true;
+  }
+
+  /// Перекрасить питомца. Та же окраска — ничего не меняется.
+  bool recolorPet(PetVariant variant) {
+    final p = pet;
+    if (p == null) return false;
+    if (p.variant == variant) return true;
+    if (balance < recolorPrice) return false;
+    balance -= recolorPrice;
+    fact[BudgetBasket.optional] =
+        (fact[BudgetBasket.optional] ?? 0) + recolorPrice;
+    p.variant = variant;
+    _registerAction();
+    notifyListeners();
+    save();
+    return true;
+  }
+
+  /// Использовать предмет из рюкзачка. Текст эффекта или null.
+  String? useItem(String itemId) {
+    final count = inventory[itemId] ?? 0;
+    final p = pet;
+    final item = itemById(itemId);
+    if (count <= 0 || p == null || item == null) return null;
+    inventory[itemId] = count - 1;
+    p.hunger = _stat(p.hunger + item.hunger);
+    p.happiness = _stat(p.happiness + item.happiness);
+    p.cleanliness = _stat(p.cleanliness + item.cleanliness);
+    _registerAction();
+    notifyListeners();
+    save();
+    return item.effectText;
+  }
+
+  // ───── Копилка (вклад) ─────
+
+  bool deposit(int amount) {
+    if (amount <= 0 || balance < amount) return false;
+    balance -= amount;
+    savings += amount;
+    fact[BudgetBasket.savings] = (fact[BudgetBasket.savings] ?? 0) + amount;
+    _registerAction();
+    notifyListeners();
+    save();
+    return true;
+  }
+
+  bool withdraw(int amount) {
+    if (amount <= 0 || savings < amount) return false;
+    savings -= amount;
+    balance += amount;
+    final saved = fact[BudgetBasket.savings] ?? 0;
+    fact[BudgetBasket.savings] = math.max(0, saved - amount);
+    notifyListeners();
+    save();
+    return true;
+  }
+
   bool updateGoal(String name, int target, {String? emoji}) {
     final trimmed = name.trim();
     if (trimmed.isEmpty || target < minGoalTarget || target > maxGoalTarget) {
@@ -551,34 +608,58 @@ class GameState extends ChangeNotifier {
     return true;
   }
 
-  /// Возраст меняется в настройках — ребёнок растёт, а игра остаётся.
-  void updateAge(int age) {
-    final p = profile;
-    if (p == null || !PlayerProfile.isValidAge(age)) return;
-    profile = p.copyWith(age: age);
+  // ───── План бюджета ─────
+
+  int get planned => plan.values.fold(0, (a, b) => a + b);
+  int get unplanned => math.max(0, planBudget - planned);
+
+  /// Изменить корзину на [delta] (шаги 5/10). Только до подтверждения,
+  /// корзина не уходит в минус, сумма — не больше бюджета дня.
+  bool changePlan(BudgetBasket basket, int delta) {
+    if (planConfirmed) return false;
+    final current = plan[basket] ?? 0;
+    var next = current + delta;
+    if (next < 0) next = 0;
+    if (delta > 0) next = math.min(next, current + unplanned);
+    if (next == current) return false;
+    plan[basket] = next;
+    notifyListeners();
+    save();
+    return true;
+  }
+
+  /// Подтвердить план — дальше только сравнение «план / факт».
+  void confirmPlan() {
+    if (planConfirmed) return;
+    planConfirmed = true;
     notifyListeners();
     save();
   }
 
-  /// Ответ на задание с дороги.
-  ///
-  /// Верно в первый раз — монеты и опыт. Ошибка ничего не отнимает:
-  /// задание становится временной задачей «Повтори», пока его не решат.
+  // ───── Задания ─────
+
+  /// Ответ на задание. Верно впервые — опыт и (не больше 2 раз в день)
+  /// монеты. Ошибка ничего не отнимает: задание становится «Повтори».
   LessonResult answerLesson(String id, int choice) {
     final lesson = lessonById(id);
     if (lesson == null) {
-      return const LessonResult(
-          correct: false, reward: 0, alreadySolved: false);
+      return const LessonResult(correct: false, reward: 0, alreadySolved: false);
     }
     final already = lessonsSolved.contains(id);
     final correct = choice == lesson.correct;
     var reward = 0;
+    var limited = false;
     if (correct) {
       lessonsRetry.remove(id);
       if (!already) {
         lessonsSolved.add(id);
-        reward = lesson.reward;
-        balance += reward;
+        if (rewardedToday < rewardedLessonsPerDay) {
+          reward = lesson.reward;
+          balance += reward;
+          rewardedToday += 1;
+        } else {
+          limited = true;
+        }
         _addXp(lessonXp);
         lessonGivenDay = day;
       }
@@ -593,10 +674,10 @@ class GameState extends ChangeNotifier {
       correct: correct,
       reward: reward,
       alreadySolved: already,
+      dailyLimitReached: limited,
     );
   }
 
-  /// Родительский режим: пройти дороги заново (монеты и питомец остаются).
   void resetLessons() {
     lessonsSolved = {};
     lessonsRetry = {};
@@ -606,33 +687,48 @@ class GameState extends ChangeNotifier {
     save();
   }
 
-  /// Переход к следующему периоду («новый день»).
-  /// Возвращает итоги — из них собирается «бумажка» с подсчётом.
+  // ───── Новый день ─────
+
+  /// Переход к следующему периоду: опыт за день, доход, проценты раз в
+  /// игровой год, траты питомца, новый план бюджета.
   DaySummary nextDay() {
+    // Опыт за прожитый день — в счёт уходящего дня (с его потолком).
+    _addXp(endOfDayXp);
+
     final income = baseIncome;
     day += 1;
     balance += income;
+
+    var interest = 0;
+    if (day % daysPerYear == 0 && savings > 0) {
+      interest = expectedInterest;
+      savings += interest;
+      interestTotal += interest;
+    }
 
     var hungerLost = 0;
     var happinessLost = 0;
     var cleanlinessLost = 0;
     final p = pet;
     if (p != null) {
-      final hungerBefore = p.hunger;
-      final happinessBefore = p.happiness;
-      final cleanlinessBefore = p.cleanliness;
+      final h = p.hunger, j = p.happiness, c = p.cleanliness;
       p.hunger = _stat(p.hunger - dayHungerCost);
       p.happiness = _stat(p.happiness - dayHappinessCost);
       p.cleanliness = _stat(p.cleanliness - dayCleanlinessCost);
-      hungerLost = hungerBefore - p.hunger;
-      happinessLost = happinessBefore - p.happiness;
-      cleanlinessLost = cleanlinessBefore - p.cleanliness;
+      hungerLost = h - p.hunger;
+      happinessLost = j - p.happiness;
+      cleanlinessLost = c - p.cleanliness;
     }
+
+    rewardedToday = 0;
+    xpToday = 0;
+    _startPlan();
     notifyListeners();
     save();
     return DaySummary(
       day: day,
       income: income,
+      interest: interest,
       hungerLost: hungerLost,
       happinessLost: happinessLost,
       cleanlinessLost: cleanlinessLost,
@@ -644,17 +740,117 @@ class GameState extends ChangeNotifier {
   }
 
   /// Одна короткая подсказка Финни для главного экрана или null.
-  ///
-  /// Голод, грязь и скуку показывает сам питомец (настроение), поэтому
-  /// здесь только то, чего по нему не видно: цель и задания.
+  /// Состояние питомца видно по нему самому, здесь — чего по нему не видно.
   String? finnyTip() {
-    if (pet == null) return null;
+    final p = pet;
+    if (p == null) return null;
     if (goalProgress >= 1) return 'Цель «$goalName» накоплена! 🎉';
+    for (final item in shopCatalog) {
+      if (item.kind == ItemKind.home && !owned.contains(item.id)) {
+        return '${item.emoji} ${item.title} — обязательная вещь. Загляни в магазин!';
+      }
+    }
     if (lessonsRetry.isNotEmpty) return 'Попробуем задание ещё раз? 🔁';
     if (nextLesson != null && day - lessonGivenDay > 1) {
       return 'Реши задание — получишь монетки ⭐';
     }
     return null;
+  }
+
+  // ───── Режим разработчика и эксперта ─────
+
+  /// Опыт без прокрутки дней (без дневного потолка).
+  void devAddXp(int amount) {
+    _addXp(amount, capped: false);
+    notifyListeners();
+    save();
+  }
+
+  void devAddCoins(int amount) {
+    balance += amount;
+    notifyListeners();
+    save();
+  }
+
+  void devRestorePet() => _devStats(100, 100, 100);
+  void devDrainPet() => _devStats(10, 10, 10);
+
+  void _devStats(int hunger, int happiness, int cleanliness) {
+    final p = pet;
+    if (p == null) return;
+    p.hunger = hunger;
+    p.happiness = happiness;
+    p.cleanliness = cleanliness;
+    notifyListeners();
+    save();
+  }
+
+  /// Сразу поставить уровень (без наград) — посмотреть модель этапа.
+  void devSetLevel(int level) {
+    final p = pet;
+    if (p == null || level < 1) return;
+    p.level = level;
+    p.xp = 0;
+    pendingLevelUp = null;
+    notifyListeners();
+    save();
+  }
+
+  void devSetHappiness(int value) {
+    final p = pet;
+    if (p == null) return;
+    p.happiness = _stat(value);
+    notifyListeners();
+    save();
+  }
+
+  void devSkipDays(int days) {
+    for (var i = 0; i < days; i++) {
+      nextDay();
+    }
+  }
+
+  void devSolveAllLessons() {
+    lessonsSolved = {for (final l in lessonsCatalog) l.id};
+    lessonsRetry = {};
+    notifyListeners();
+    save();
+  }
+
+  void devResetGuide() {
+    questsGuideSeen = false;
+    notifyListeners();
+    save();
+  }
+
+  /// +1 день к огоньку (с бонусом, если серия до него дошла).
+  void devBumpStreak() {
+    streak += 1;
+    lastActionDate = _today();
+    actionPulse += 1;
+    final bonus = streakBonusFor(streak);
+    if (bonus > 0) {
+      balance += bonus;
+      _showBonus(bonus, '🔥 Огонёк горит $streak дн. подряд!');
+    }
+    notifyListeners();
+    save();
+  }
+
+  // ───── Сохранение ─────
+
+  Map<String, int> _basketsToJson(Map<BudgetBasket, int> m) =>
+      {for (final e in m.entries) e.key.name: e.value};
+
+  Map<BudgetBasket, int> _basketsFromJson(Object? raw) {
+    final result = _emptyBaskets();
+    if (raw is Map) {
+      for (final b in BudgetBasket.values) {
+        final v = raw[b.name];
+        if (v is num && v >= 0) result[b] = v.toInt();
+      }
+    }
+    return result;
   }
 
   Future<void> save() async {
@@ -672,14 +868,22 @@ class GameState extends ChangeNotifier {
         'onboardingDone': onboardingDone,
         'isDark': isDark,
         'inventory': inventory,
+        'owned': owned.toList(),
         'lessonsSolved': lessonsSolved.toList(),
         'lessonsRetry': lessonsRetry.toList(),
         'lessonMistakes': lessonMistakes,
         'lessonGivenDay': lessonGivenDay,
+        'rewardedToday': rewardedToday,
+        'xpToday': xpToday,
         'lastBonusDate': lastBonusDate,
         'streak': streak,
-        'questsGuideSeen': questsGuideSeen,
         'lastActionDate': lastActionDate,
+        'interestTotal': interestTotal,
+        'questsGuideSeen': questsGuideSeen,
+        'planBudget': planBudget,
+        'plan': _basketsToJson(plan),
+        'planConfirmed': planConfirmed,
+        'fact': _basketsToJson(fact),
       };
       await prefs.setString(_prefsKey, jsonEncode(data));
     } catch (_) {
@@ -700,18 +904,15 @@ class GameState extends ChangeNotifier {
         profile = PlayerProfile.fromJson(profileJson);
       }
       final petJson = decoded['pet'];
-      if (petJson is Map<String, dynamic>) {
-        pet = Pet.fromJson(petJson);
-      }
+      if (petJson is Map<String, dynamic>) pet = Pet.fromJson(petJson);
 
       int readInt(String key, int fallback) {
         final v = decoded[key];
-        if (v is num) return v.toInt();
-        return fallback;
+        return v is num ? v.toInt() : fallback;
       }
 
-      balance = readInt('balance', 60);
-      savings = readInt('savings', 0);
+      balance = math.max(0, readInt('balance', 60));
+      savings = math.max(0, readInt('savings', 0));
       final g = decoded['goalName'];
       if (g is String && g.isNotEmpty) goalName = g;
       final ge = decoded['goalEmoji'];
@@ -721,42 +922,51 @@ class GameState extends ChangeNotifier {
       onboardingDone = decoded['onboardingDone'] == true;
       isDark = decoded['isDark'] == true;
 
+      // Рюкзачок: только расходуемые предметы, которые есть в каталоге.
       final inv = <String, int>{};
       final rawInv = decoded['inventory'];
       if (rawInv is Map) {
         rawInv.forEach((k, v) {
-          if (k is String && v is num) inv[k] = v.toInt();
+          final item = k is String ? itemById(k) : null;
+          if (item != null && !item.permanent && v is num && v > 0) {
+            inv[k as String] = v.toInt();
+          }
         });
       }
-      if (inv.isNotEmpty) inventory = inv;
+      inventory = inv;
 
-      Set<String> readIds(String key) {
+      Set<String> readIds(String key, bool Function(String id) known) {
         final raw = decoded[key];
         if (raw is! List) return {};
-        // Задания, которых больше нет в каталоге, просто пропускаем.
-        return raw
-            .whereType<String>()
-            .where((id) => lessonById(id) != null)
-            .toSet();
+        return raw.whereType<String>().where(known).toSet();
       }
 
-      lessonsSolved = readIds('lessonsSolved');
-      lessonsRetry = readIds('lessonsRetry')..removeAll(lessonsSolved);
+      owned = readIds('owned', (id) => itemById(id)?.permanent ?? false);
+      lessonsSolved = readIds('lessonsSolved', (id) => lessonById(id) != null);
+      lessonsRetry = readIds('lessonsRetry', (id) => lessonById(id) != null)
+        ..removeAll(lessonsSolved);
       lessonMistakes = readInt('lessonMistakes', 0);
       lessonGivenDay = readInt('lessonGivenDay', 1);
+      rewardedToday = readInt('rewardedToday', 0);
+      xpToday = readInt('xpToday', 0);
       final lb = decoded['lastBonusDate'];
       if (lb is String) lastBonusDate = lb;
-
       streak = readInt('streak', 0);
-      questsGuideSeen = decoded['questsGuideSeen'] == true;
       final la = decoded['lastActionDate'];
       if (la is String) lastActionDate = la;
+      interestTotal = readInt('interestTotal', 0);
+      questsGuideSeen = decoded['questsGuideSeen'] == true;
+
+      planBudget = readInt('planBudget', balance);
+      plan = _basketsFromJson(decoded['plan']);
+      fact = _basketsFromJson(decoded['fact']);
+      planConfirmed = decoded['planConfirmed'] == true;
     } catch (_) {
       // Битый сейв — начинаем заново, но приложение живёт.
     }
   }
 
-  /// Полный сброс (кнопка «Начать заново» в настройках).
+  /// Полный сброс (родительский режим → «Начать заново»).
   Future<void> reset() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -764,27 +974,12 @@ class GameState extends ChangeNotifier {
     } catch (_) {}
     profile = null;
     pet = null;
-    balance = 60;
-    savings = 0;
-    goalName = defaultGoal.title;
-    goalEmoji = defaultGoal.emoji;
-    goalTarget = defaultGoal.price;
-    day = 1;
     onboardingDone = false;
     isDark = false;
     justFinishedOnboarding = false;
-    inventory = {};
-    lessonsSolved = {};
-    lessonsRetry = {};
-    lessonMistakes = 0;
-    lessonGivenDay = 1;
-    streak = 0;
-    lastActionDate = null;
-    questsGuideSeen = false;
-    actionPulse = 0;
-    pendingBonus = 0;
     lastBonusDate = null;
-    pendingLevelUp = null;
+    _resetProgress();
+    inventory = {};
     notifyListeners();
   }
 }

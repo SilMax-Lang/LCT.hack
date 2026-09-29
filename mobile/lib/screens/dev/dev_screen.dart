@@ -48,11 +48,13 @@ class DevScreen extends StatelessWidget {
             ),
           _Section(
             title: 'Уровень и опыт',
-            hint: 'С наградами и экраном роста — как в игре',
+            hint: 'С наградами и экраном роста — как в игре, '
+                'без дневного потолка опыта',
             children: [
+              _DevButton(label: '+10 XP', onTap: () => xp(10)),
               _DevButton(label: '+50 XP', onTap: () => xp(50)),
               _DevButton(label: '+1 уровень', onTap: () => xp(100)),
-              _DevButton(label: '+5 уровней', onTap: () => xp(500)),
+              _DevButton(label: '+3 уровня', onTap: () => xp(300)),
               _DevButton(label: '+10 уровней', onTap: () => xp(1000)),
             ],
           ),
@@ -60,18 +62,18 @@ class DevScreen extends StatelessWidget {
             title: 'Возраст модели',
             hint: 'Уровень сразу, без наград: '
                 '1–${teenLevel - 1} малыш, $teenLevel–${adultLevel - 1} '
-                'подросток, $adultLevel+ взрослый',
+                'ученик, $adultLevel+ исследователь',
             children: [
               _DevButton(
                 label: 'Малыш (ур. 1)',
                 onTap: () => run(() => game.devSetLevel(1)),
               ),
               _DevButton(
-                label: 'Подросток (ур. $teenLevel)',
+                label: 'Ученик (ур. $teenLevel)',
                 onTap: () => run(() => game.devSetLevel(teenLevel)),
               ),
               _DevButton(
-                label: 'Взрослый (ур. $adultLevel)',
+                label: 'Исследователь (ур. $adultLevel)',
                 onTap: () => run(() => game.devSetLevel(adultLevel)),
               ),
             ],

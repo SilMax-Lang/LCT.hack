@@ -17,13 +17,24 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   /// Версия внизу экрана.
-  static const String version = 'Версия 0.3.0';
+  static const String version = 'Версия 0.4.0';
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  /// Скрытый вход для разработчиков: 7 нажатий на строку версии.
+  /// Открывает тот же экран, что кнопка «Для экспертов».
+  int _versionTaps = 0;
+
+  void _onVersionTap() {
+    _versionTaps++;
+    if (_versionTaps < 7) return;
+    _versionTaps = 0;
+    _openExpertMode();
+  }
+
   void _openExpertMode() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const DevScreen()),
@@ -145,10 +156,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Center(
-            child: Text(
-              SettingsScreen.version,
-              style: TextStyle(color: scheme.onSurfaceVariant),
+          // Обычная серая подпись; 7 нажатий — режим разработчика.
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _onVersionTap,
+            child: SizedBox(
+              height: 48,
+              child: Center(
+                child: Text(
+                  SettingsScreen.version,
+                  style: TextStyle(color: scheme.onSurfaceVariant),
+                ),
+              ),
             ),
           ),
         ],

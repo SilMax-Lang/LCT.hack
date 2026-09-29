@@ -191,9 +191,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(game.pet!.xp, 50);
 
-      await tester.ensureVisible(find.text('Подросток (ур. $teenLevel)'));
+      await tester.ensureVisible(find.text('Ученик (ур. $teenLevel)'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Подросток (ур. $teenLevel)'));
+      await tester.tap(find.text('Ученик (ур. $teenLevel)'));
       await tester.pumpAndSettle();
       expect(game.pet!.level, teenLevel);
       expect(tester.takeException(), isNull);
@@ -211,7 +211,8 @@ void main() {
 
     await tester.tap(find.text('Задания'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Твой уровень — 3 класс'), findsOneWidget);
+    // Дорога «Финансы» открыта по умолчанию: для 9 лет (3 класс) — 2 уровень.
+    expect(find.textContaining('Твой уровень — 2 уровень'), findsOneWidget);
 
     await tester.tap(find.text('Покажи!'));
     await tester.pumpAndSettle();
@@ -238,6 +239,8 @@ void main() {
     await tester.tap(find.text('Банк'));
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(find.text('Забрать 10 из копилки'), 200,
+        scrollable: find.byType(Scrollable).last);
     await tester.tap(find.text('Забрать 10 из копилки'));
     await tester.pumpAndSettle();
     expect(find.textContaining('В копилке станет 40'), findsOneWidget);

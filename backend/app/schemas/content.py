@@ -17,7 +17,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-ItemKind = Literal["mandatory", "optional"]
+ItemKind = Literal["mandatory", "optional", "education"]
 StatId = Literal["satiety", "happiness", "cleanliness"]
 HEX_COLOR = r"^#[0-9A-F]{6}$"
 
@@ -64,7 +64,13 @@ class CatalogCategory(ContentModel):
     id: str
     title: str
     emoji: str
-    kind: ItemKind = Field(description="mandatory — «надо», optional — «хочу»")
+    kind: ItemKind = Field(
+        description="Корзина бюджета: mandatory — «надо», optional — «хочу», education — обучение"
+    )
+    permanent: bool = Field(default=False, description="Покупается один раз и остаётся навсегда")
+    blocked_when_hungry: bool = Field(
+        default=False, description="Закрыт, пока питомец голоден (игрушки, обучение)"
+    )
 
 
 class CatalogItem(ContentModel):
@@ -77,6 +83,16 @@ class CatalogItem(ContentModel):
     effects: ItemEffects
     effect_text: str = Field(description="Реплика после использования предмета")
     badge: str | None = Field(default=None, description="Ярлык на карточке: «Хит», «Новинка»…")
+    permanent: bool = False
+    rarity: Literal["common", "rare", "epic"] | None = Field(
+        default=None, description="Редкость — только у украшений коллекции"
+    )
+    income_after: int | None = Field(
+        default=None, ge=1, description="Доход за день после курса — только у обучения"
+    )
+    resale_price: int | None = Field(
+        default=None, ge=0, description="За сколько магазин выкупит украшение (70 %)"
+    )
 
 
 class DealOfDay(ContentModel):
@@ -87,10 +103,21 @@ class DealOfDay(ContentModel):
     explain: str
 
 
+class PurchaseRules(ContentModel):
+    requires_confirmation: bool = Field(description="Окно «Купить / Отменить»")
+    hungry_block_at_satiety: int = Field(ge=0, le=100)
+    hungry_block_message: str
+    courses_sequential: bool
+    start_income: int = Field(ge=0)
+    decorations_resale_rate: float = Field(ge=0, le=1)
+    decorations_sale_requires_confirmation: bool
+
+
 class CatalogFile(ContentFile):
     categories: list[CatalogCategory] = Field(min_length=1)
     items: list[CatalogItem]
     deal_of_day: DealOfDay
+    purchase_rules: PurchaseRules
 
     @model_validator(mode="after")
     def _check(self) -> "CatalogFile":
@@ -102,6 +129,8 @@ class CatalogFile(ContentFile):
                 raise ValueError(f"catalog.items: неизвестная категория {item.category}")
             if item.kind != kinds[item.category]:
                 raise ValueError(f"catalog.items: {item.id} — kind не совпадает с категорией")
+            if item.income_after is not None and item.kind != "education":
+                raise ValueError(f"catalog.items: {item.id} — доход растёт только от курсов")
         return self
 
 
@@ -184,7 +213,8 @@ class LessonTrack(ContentModel):
 
 class AgeGrade(ContentModel):
     age: int = Field(ge=1)
-    grade: int = Field(ge=1)
+    grade: int = Field(ge=1, description="Класс = возраст − 6; он же уровень математики")
+    finance_level: int = Field(ge=1, description="Уровень «Финансов»: 1–2 класс → 1, 3 → 2, 4 → 3")
 
 
 class LessonRules(ContentModel):
@@ -193,6 +223,9 @@ class LessonRules(ContentModel):
     reward_per_grade: int = Field(ge=0)
     xp_per_lesson: int = Field(ge=0)
     reward_only_first_solve: bool
+    rewarded_lessons_per_day: int = Field(
+        ge=1, description="Монеты — не больше чем за N заданий в день"
+    )
     mistake_goes_to_retry: bool = Field(description="ТЗ 2.5.9: ошибка → задача «Повтори»")
     mistake_penalty: int = Field(ge=0)
     age_to_grade: list[AgeGrade] = Field(min_length=1)
@@ -246,7 +279,7 @@ class GlossaryFile(ContentFile):
 
 
 # --------------------------------------------------------------------------
-# Питомец: виды, окраски, образы, этапы, настроение
+# Питомец: виды, окраски, этапы, эмоции, настроение
 # --------------------------------------------------------------------------
 
 
@@ -270,19 +303,6 @@ class PetSpecies(ContentModel):
         return self
 
 
-class PetSkin(ContentModel):
-    """Образ питомца: покупается навсегда, надевается только на свой вид."""
-
-    id: str
-    species: str
-    title: str
-    emoji: str
-    price: int = Field(ge=1)
-    description: str
-    bg_start: str = Field(pattern=HEX_COLOR)
-    bg_end: str = Field(pattern=HEX_COLOR)
-
-
 class PetStage(ContentModel):
     id: str
     title: str
@@ -304,6 +324,15 @@ class PetMood(ContentModel):
     value: int | None = Field(ge=0, le=100)
 
 
+class PetEmotions(ContentModel):
+    """Эмоция модели по счастью: у каждой свой ролик (грустный, обычный, весёлый)."""
+
+    stat: Literal["happiness"]
+    sad_below: int = Field(ge=0, le=100)
+    happy_above: int = Field(ge=0, le=100)
+    explain: str
+
+
 class NicknameRules(ContentModel):
     min_length: int = Field(ge=1)
     max_length: int = Field(ge=1)
@@ -314,8 +343,9 @@ class NicknameRules(ContentModel):
 
 class PetsFile(ContentFile):
     species: list[PetSpecies]
-    skins: list[PetSkin]
+    recolor_price: int = Field(ge=0, description="Перекраска питомца в магазине")
     stages: list[PetStage]
+    emotions: PetEmotions
     moods: list[PetMood] = Field(min_length=2)
     name_suggestions: list[str]
     nickname_rules: NicknameRules
@@ -323,13 +353,10 @@ class PetsFile(ContentFile):
     @model_validator(mode="after")
     def _check(self) -> "PetsFile":
         _require_unique(self.species, "pets.species")
-        _require_unique(self.skins, "pets.skins")
         _require_unique(self.stages, "pets.stages")
         _require_unique(self.moods, "pets.moods")
-        species = set(_ids(self.species))
-        for skin in self.skins:
-            if skin.species not in species:
-                raise ValueError(f"pets.skins: {skin.id} — неизвестный вид {skin.species}")
+        if self.emotions.sad_below > self.emotions.happy_above:
+            raise ValueError("pets.emotions: порог грусти выше порога радости")
         levels = [stage.min_level for stage in self.stages]
         if levels != sorted(set(levels)) or (levels and levels[0] != 1):
             raise ValueError("pets.stages: min_level должен расти и начинаться с 1")
@@ -374,23 +401,32 @@ class IncomeSource(ContentModel):
 
 
 class IncomeLevel(ContentModel):
-    level: int = Field(ge=1)
+    courses: int = Field(ge=0, description="Сколько курсов пройдено")
     income: int = Field(ge=0)
 
 
+class Course(ContentModel):
+    course_id: str
+    title: str
+    price: int = Field(ge=1)
+    income_after: int = Field(ge=1)
+
+
 class IncomeRules(ContentModel):
-    depends_on: Literal["pet_level"]
+    depends_on: Literal["courses"]
     base: int = Field(ge=0)
-    per_level: int = Field(ge=0)
     explain: str
     table: list[IncomeLevel] = Field(min_length=1)
+    courses: list[Course]
     sources: list[IncomeSource] = Field(min_length=1)
 
     @model_validator(mode="after")
     def _check(self) -> "IncomeRules":
-        for row in self.table:
-            if row.income != self.base + row.level * self.per_level:
-                raise ValueError(f"economy.income.table: уровень {row.level} не по формуле")
+        expected = [self.base] + [course.income_after for course in self.courses]
+        if [row.income for row in self.table] != expected:
+            raise ValueError("economy.income.table: доход не совпадает с курсами")
+        if expected != sorted(expected):
+            raise ValueError("economy.income: каждый курс должен повышать доход")
         return self
 
 
@@ -427,18 +463,40 @@ class PeriodRules(ContentModel):
     demo_mode_periods: int = Field(ge=1, description="ТЗ 2.6: не менее 5 периодов подряд")
 
 
+class DepositRules(ContentModel):
+    rate_per_year: float = Field(gt=0, le=1)
+    days_per_year: int = Field(ge=1, description="Игровой год в днях")
+    interest_cap: int = Field(ge=0, description="Потолок процентов за одно начисление")
+
+
 class SavingsRules(ContentModel):
     quick_amounts: list[int] = Field(min_length=1)
-    plan_quick_amount: int = Field(ge=1)
     withdraw_amount: int = Field(ge=1)
     withdraw_requires_confirmation: bool
     suggested_per_day: int = Field(ge=1)
+    deposit: DepositRules
+
+
+class StreakBonus(ContentModel):
+    days: int = Field(ge=1)
+    coins: int = Field(ge=1)
+    repeat: bool = Field(description="Повторяется каждые `days` дней")
 
 
 class StreakRules(ContentModel):
     counts: str
     resets_after_missed_day: bool
     coins_bonus: bool
+    bonuses: list[StreakBonus] = Field(default_factory=list)
+
+
+class BudgetPlanRules(ContentModel):
+    baskets: list[Literal["mandatory", "optional", "education", "savings"]] = Field(min_length=1)
+    steps: list[int] = Field(min_length=1)
+    confirm_locks_plan: Literal[True] = Field(description="ТЗ: после подтверждения — план/факт")
+    shows_plan_vs_fact: bool
+    new_plan_each_day: bool
+    unallocated_hint: str
 
 
 class PlayerRules(ContentModel):
@@ -463,19 +521,18 @@ class EconomyFile(ContentFile):
     daily_bonus: DailyBonus
     level_up: LevelUpRules
     xp_rules: list[XpRule] = Field(min_length=1)
+    xp_per_day_max: int = Field(ge=1, description="Потолок опыта за игровой день")
     stats: list[PetStat] = Field(min_length=3)
     period: PeriodRules
     savings: SavingsRules
     streak: StreakRules
+    budget_plan: BudgetPlanRules
     player: PlayerRules
     rules: GameRules
     messages: dict[str, str]
     from_documents: dict[str, Any] = Field(
         default_factory=dict,
-        description=(
-            "Механики из документов команды, которых в приложении пока нет "
-            "(вклад 20%, курсы, бонусы огонька, украшения). Справочно."
-        ),
+        description="Где приложение сознательно отличается от документов команды. Справочно.",
     )
 
     @model_validator(mode="after")

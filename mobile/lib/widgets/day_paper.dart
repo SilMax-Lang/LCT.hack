@@ -71,6 +71,8 @@ class DayPaper extends StatelessWidget {
                 const _DashedLine(),
                 const SizedBox(height: 6),
                 _row('🪙', 'Доход за день', '+${summary.income}', plus),
+                if (summary.interest > 0)
+                  _row('🏦', 'Проценты по вкладу', '+${summary.interest}', plus),
                 _lostRow('🍎', 'Сытость', summary.hungerLost),
                 _lostRow('😊', 'Счастье', summary.happinessLost),
                 _lostRow('🧼', 'Чистота', summary.cleanlinessLost),

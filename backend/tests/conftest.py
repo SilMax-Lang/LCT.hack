@@ -28,7 +28,7 @@ def client():
 def snapshot() -> dict:
     """Снимок профиля в форме сохранения приложения: пройден онбординг, третий день."""
     return {
-        "schema_version": "2.0",
+        "schema_version": "2.1",
         "revision": 1,
         "updated_at": "2026-09-21T10:00:00Z",
         "day": 3,
@@ -53,7 +53,7 @@ def snapshot() -> dict:
             "mistakes": 1,
             "last_solved_day": 2,
         },
-        "skins": {"owned": ["cat_astronaut"], "equipped": "cat_astronaut"},
+        "owned": ["bowl", "course_abc", "decor_bow"],
         "streak": {"days": 3, "last_action_date": "2026-09-21"},
         "last_bonus_date": "2026-09-21",
         "settings": {"dark_theme": False},

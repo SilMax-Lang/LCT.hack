@@ -154,11 +154,11 @@ class _LevelUpScreenState extends State<LevelUpScreen>
               label: 'Монетки в кошелёк',
               value: '+${event.coins}',
             ),
-            // Словами, а не стрелкой: символа «→» нет в Roboto.
+            // Доход растёт от курсов (магазин → «Обучение»), не от уровня.
             _RewardRow(
-              emoji: '📈',
-              label: 'Доход за день вырос',
-              value: '+${event.incomeTo - event.incomeFrom}',
+              emoji: '🧭',
+              label: 'Этап',
+              value: event.stageTo,
             ),
             const _RewardRow(
               emoji: '💛',

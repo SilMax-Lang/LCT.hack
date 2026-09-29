@@ -10,10 +10,16 @@ import '../../widgets/kids_button.dart';
 import '../../widgets/loop_carousel.dart';
 import '../../widgets/pet_poster_card.dart';
 
-/// Магазин: перекраска питомца, скидка дня и шесть отделов (еда, уход,
-/// здоровье, игры, наряды, уют). Купленное падает в рюкзачок (тап по
-/// питомцу на главном экране). Баланс — в верхней панели (MainShell),
-/// чтобы он был виден при прокрутке.
+/// Магазин по документам «Игровая экономика»:
+/// - перекраска питомца и скидка дня;
+/// - «Надо»: еда, уход, здоровье, вещи для дома (миска, поилка, лежанка —
+///   покупаются один раз);
+/// - «Хочу»: игрушки и коллекция из 20 украшений (продаются за 70 %);
+/// - «Обучение»: курсы по порядку, каждый повышает доход за день.
+///
+/// Каждая покупка — через окно «Купить / Отменить». Пока питомец голоден
+/// (сытость ≤ 40), игрушки и обучение закрыты: сначала накорми.
+/// Баланс — в верхней панели (MainShell), виден при прокрутке.
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
 
@@ -28,18 +34,66 @@ class _ShopScreenState extends State<ShopScreen> {
   /// Выбранный отдел; null — «Все».
   ItemKind? _kind;
 
-  /// Покупка без уведомлений: отклик — огонёк на товаре и в шапке,
-  /// счётчик «× N» на карточке и новый баланс.
-  void _buy(ShopItem item) {
-    if (GameStateScope.read(context).buyItem(item.id)) {
-      setState(() => _sparks[item.id] = (_sparks[item.id] ?? 0) + 1);
-    }
+  void _spark(String id) =>
+      setState(() => _sparks[id] = (_sparks[id] ?? 0) + 1);
+
+  /// Покупка — только после подтверждения: видно, сколько останется.
+  Future<void> _buy(ShopItem item) async {
+    final game = GameStateScope.read(context);
+    final price = game.priceOf(item);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('${item.emoji} ${item.title}'),
+        content: Text(
+          'Купить за $price 🪙?\n'
+          'В кошельке останется ${game.balance - price} 🪙.'
+          '${item.permanent ? '\nЭто покупка навсегда.' : ''}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Отменить'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Купить'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    if (game.buyItem(item.id) == BuyResult.ok) _spark(item.id);
+  }
+
+  /// Продажа украшения — тоже с подтверждением.
+  Future<void> _sell(ShopItem item) async {
+    final game = GameStateScope.read(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Продать «${item.title}»?'),
+        content: Text(
+          'Магазин заплатит ${item.resalePrice} 🪙 — это 70 % цены '
+          '(купили за ${item.price}).',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Оставить'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Продать'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) game.sellDecoration(item.id);
   }
 
   void _recolor(PetVariant variant) {
-    if (GameStateScope.read(context).recolorPet(variant)) {
-      setState(() => _sparks['recolor'] = (_sparks['recolor'] ?? 0) + 1);
-    }
+    if (GameStateScope.read(context).recolorPet(variant)) _spark('recolor');
   }
 
   @override
@@ -57,12 +111,16 @@ class _ShopScreenState extends State<ShopScreen> {
             spark: _sparks['recolor'] ?? 0,
             onRecolor: _recolor,
           ),
+        if (game.petHungry) ...[
+          const SizedBox(height: 12),
+          _HungryNote(petName: game.pet?.name ?? 'Питомец'),
+        ],
         const SizedBox(height: 12),
         _DealCard(
           item: deal,
           price: game.priceOf(deal),
           spark: _sparks[deal.id] ?? 0,
-          onBuy: game.balance >= game.priceOf(deal) ? () => _buy(deal) : null,
+          onBuy: game.canBuy(deal) == BuyResult.ok ? () => _buy(deal) : null,
         ),
         const SizedBox(height: 12),
         // Отделы: горизонтальная лента чипов, крупных для пальца.
@@ -87,41 +145,100 @@ class _ShopScreenState extends State<ShopScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        ...kinds.map(
-          (kind) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${kind.emoji} ${kind.title}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  _NeedTag(mandatory: kind.mandatory),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ...shopCatalog.where((item) => item.kind == kind).map(
-                    (item) => _ItemCard(
-                      item: item,
-                      owned: game.inventory[item.id] ?? 0,
-                      price: game.priceOf(item),
-                      spark: _sparks[item.id] ?? 0,
-                      onBuy: game.balance >= game.priceOf(item)
-                          ? () => _buy(item)
-                          : null,
-                    ),
-                  ),
-              const SizedBox(height: 6),
-            ],
-          ),
-        ),
+        for (final kind in kinds) ..._section(game, kind),
       ],
+    );
+  }
+
+  List<Widget> _section(GameState game, ItemKind kind) {
+    final items = shopCatalog.where((i) => i.kind == kind).toList();
+    final String subtitle;
+    switch (kind) {
+      case ItemKind.home:
+        subtitle = 'Покупается один раз и остаётся навсегда';
+      case ItemKind.education:
+        subtitle = 'Курсы по порядку. Сейчас доход ${game.baseIncome} 🪙 в день';
+      case ItemKind.decor:
+        final have = items.where((i) => game.owned.contains(i.id)).length;
+        subtitle = 'Коллекция: $have из ${items.length}. Продажа — за 70 %';
+      default:
+        subtitle = '';
+    }
+    return [
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              '${kind.emoji} ${kind.title}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+          _NeedTag(kind: kind),
+        ],
+      ),
+      if (subtitle.isNotEmpty)
+        Text(subtitle, style: TextStyle(color: KidsTheme.muted(context))),
+      const SizedBox(height: 8),
+      for (final item in items) _card(game, item),
+      const SizedBox(height: 6),
+    ];
+  }
+
+  Widget _card(GameState game, ShopItem item) {
+    final status = game.canBuy(item);
+    final price = game.priceOf(item);
+    final owned = game.owned.contains(item.id);
+    String label = '🪙 $price';
+    VoidCallback? onPressed = status == BuyResult.ok ? () => _buy(item) : null;
+    String? note;
+    switch (status) {
+      case BuyResult.owned:
+        if (item.kind == ItemKind.decor) {
+          label = 'Продать';
+          onPressed = () => _sell(item);
+        } else {
+          label = 'Есть ✅';
+        }
+      case BuyResult.locked:
+        label = '🔒 $price';
+        note = 'Сначала пройди предыдущий курс';
+      case BuyResult.hungry:
+        note = 'Сначала накорми питомца';
+      case BuyResult.noMoney:
+      case BuyResult.ok:
+        break;
+    }
+    return _ItemCard(
+      item: item,
+      count: item.permanent ? (owned ? 1 : 0) : game.inventory[item.id] ?? 0,
+      price: price,
+      spark: _sparks[item.id] ?? 0,
+      label: label,
+      onPressed: onPressed,
+      note: note,
+    );
+  }
+}
+
+/// Питомец голоден: игрушки и обучение закрыты (текстом, не только цветом).
+class _HungryNote extends StatelessWidget {
+  final String petName;
+
+  const _HungryNote({required this.petName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF7043).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        '😋 $petName слишком голоден, чтобы играть или учиться! '
+        'Сначала накорми его.',
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -194,36 +311,45 @@ class _RecolorSectionState extends State<_RecolorSection> {
   }
 }
 
-/// Строка эффектов: «🍎 +20  😊 +5» — видно пользу без чтения описания.
+/// Строка пользы: «🍎 +20  😊 +5», у курса — новый доход, у украшения —
+/// редкость. Видно без чтения описания.
 String effectsLine(ShopItem item) {
+  if (item.incomeAfter != null) return '📈 Доход ${item.incomeAfter} в день';
+  if (item.rarity != null) return item.rarity!.title;
   final parts = <String>[
     if (item.hunger > 0) '🍎 +${item.hunger}',
     if (item.happiness > 0) '😊 +${item.happiness}',
     if (item.cleanliness > 0) '🧼 +${item.cleanliness}',
-    if (item.xp > 5) '✨ +${item.xp}',
   ];
-  return parts.join('   ');
+  return parts.isEmpty ? item.effectText : parts.join('   ');
 }
 
 class _ItemCard extends StatelessWidget {
   final ShopItem item;
-  final int owned;
+  final int count;
   final int price;
   final int spark;
-  final VoidCallback? onBuy;
+  final String label;
+  final VoidCallback? onPressed;
+
+  /// Почему кнопка закрыта (голод, порядок курсов) — текстом.
+  final String? note;
 
   const _ItemCard({
     required this.item,
-    required this.owned,
+    required this.count,
     required this.price,
     required this.spark,
-    required this.onBuy,
+    required this.label,
+    required this.onPressed,
+    this.note,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final discounted = price != item.price;
+    final rarity = item.rarity;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Card(
@@ -240,11 +366,14 @@ class _ItemCard extends StatelessWidget {
                   height: 56,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: KidsTheme.soft(context),
+                    color: rarity?.color.withValues(alpha: 0.15) ??
+                        KidsTheme.soft(context),
                     borderRadius: BorderRadius.circular(16),
+                    border: rarity == null
+                        ? null
+                        : Border.all(color: rarity.color, width: 2),
                   ),
-                  child: Text(item.emoji,
-                      style: const TextStyle(fontSize: 32)),
+                  child: Text(item.emoji, style: const TextStyle(fontSize: 32)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -253,7 +382,8 @@ class _ItemCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${item.title}${owned > 0 ? ' × $owned' : ''}',
+                      '${item.title}'
+                      '${!item.permanent && count > 0 ? ' × $count' : ''}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.bold),
@@ -262,16 +392,18 @@ class _ItemCard extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: 2, bottom: 2),
                         child: _Badge(
-                          text: discounted
-                              ? '🔥 −$dealPercent%'
-                              : item.badge!,
+                          text: discounted ? '🔥 −$dealPercent%' : item.badge!,
                         ),
                       ),
                     Text(
-                      effectsLine(item),
-                      maxLines: 1,
+                      note ?? effectsLine(item),
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: scheme.onSurfaceVariant),
+                      style: TextStyle(
+                        color: note != null
+                            ? const Color(0xFFD84315)
+                            : scheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -283,8 +415,8 @@ class _ItemCard extends StatelessWidget {
                   minimumSize: const Size(84, 48),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
-                onPressed: onBuy,
-                child: Text('🪙 $price'),
+                onPressed: onPressed,
+                child: Text(label),
               ),
             ],
           ),
@@ -424,15 +556,17 @@ class _KindChip extends StatelessWidget {
 }
 
 /// «Надо» / «Хочу» — текстом, а не только цветом (требование ТЗ).
+/// Корзина отдела: «Надо», «Хочу» или «Обучение» — текстом, а не только
+/// цветом (требование ТЗ).
 class _NeedTag extends StatelessWidget {
-  final bool mandatory;
+  final ItemKind kind;
 
-  const _NeedTag({required this.mandatory});
+  const _NeedTag({required this.kind});
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        mandatory ? const Color(0xFF2E7D32) : const Color(0xFF8E24AA);
+    final basket = kind.basket;
+    final color = basket.color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -441,7 +575,7 @@ class _NeedTag extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(
-        mandatory ? '✅ Надо' : '💜 Хочу',
+        '${basket.emoji} ${basket.title}',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           color: KidsTheme.isDark(context) ? Colors.white : color,

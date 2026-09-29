@@ -177,7 +177,8 @@ class ParentScreen extends StatelessWidget {
             ),
             child: Text(
               '💡 Все задания открыты. Возраст лишь подсказывает ребёнку, '
-              'с чего начать: 7 лет — 1 класс, 8 — 2, 9 — 3, 10+ — 4. '
+              'с чего начать: класс = возраст − 6 (7 лет — 1 класс, 10+ — 4). '
+              'В «Финансах» 1–2 класс — 1 уровень, 3 — 2-й, 4 — 3-й. '
               'Ошибка не отнимает монет: задание просто просит повторить.',
               style: TextStyle(height: 1.4, color: scheme.onSurface),
             ),
@@ -208,7 +209,7 @@ class _TrackProgress extends StatelessWidget {
       children: [
         Text(
           '${track.emoji} ${track.title}: $solved из $total '
-          '• рекомендован $recommended класс',
+          '• рекомендован ${track.gradeLabel(recommended)}',
         ),
         const SizedBox(height: 6),
         ClipRRect(

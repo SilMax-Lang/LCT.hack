@@ -105,6 +105,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final summary = GameStateScope.read(context).nextDay();
     if (!mounted) return;
     await showDayPaper(context, summary);
+    if (!mounted) return;
+    // Опыт за прожитый день мог дорастить питомца до нового уровня.
+    await showLevelUpIfNeeded(context);
     _react(PetReaction.sleep);
   }
 
@@ -130,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (game.pendingBonus > 0) ...[
           _BonusBanner(
             amount: game.pendingBonus,
-            petName: pet.name,
+            text: game.pendingBonusText,
             onClose: game.dismissBonus,
           ),
           const SizedBox(height: 12),
@@ -434,12 +437,14 @@ class _SpeechBubble extends StatelessWidget {
 
 class _BonusBanner extends StatelessWidget {
   final int amount;
-  final String petName;
+
+  /// Повод: «Барсик рад тебя видеть!», «Огонёк горит 3 дн. подряд!».
+  final String text;
   final VoidCallback onClose;
 
   const _BonusBanner({
     required this.amount,
-    required this.petName,
+    required this.text,
     required this.onClose,
   });
 
@@ -459,7 +464,7 @@ class _BonusBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              '$petName рад тебя видеть! +$amount 🪙',
+              '$text +$amount 🪙',
               style: const TextStyle(
                 color: Color(0xFF4A2A00),
                 fontWeight: FontWeight.w700,

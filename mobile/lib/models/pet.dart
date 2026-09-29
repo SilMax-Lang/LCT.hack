@@ -47,7 +47,7 @@ const int happyAbove = 66;
 /// Этап взросления — по уровню питомца. У каждого этапа своя модель.
 enum PetStage { baby, teen, adult }
 
-/// С какого уровня питомец — подросток и взрослый.
+/// С какого уровня питомец — ученик и исследователь.
 const int teenLevel = 12;
 const int adultLevel = 35;
 
@@ -57,9 +57,9 @@ extension PetStageInfo on PetStage {
       case PetStage.baby:
         return 'Малыш 🌱';
       case PetStage.teen:
-        return 'Подросток 🌿';
+        return 'Ученик 📚';
       case PetStage.adult:
-        return 'Взрослый 🌳';
+        return 'Исследователь 🧭';
     }
   }
 }
@@ -214,8 +214,8 @@ class Pet {
     required this.level,
   });
 
-  /// Этап по уровню: до [teenLevel] — малыш, до [adultLevel] — подросток,
-  /// дальше — взрослый.
+  /// Этап по уровню: до [teenLevel] — малыш, до [adultLevel] — ученик,
+  /// дальше — исследователь.
   static PetStage stageOf(int level) {
     if (level < teenLevel) return PetStage.baby;
     if (level < adultLevel) return PetStage.teen;

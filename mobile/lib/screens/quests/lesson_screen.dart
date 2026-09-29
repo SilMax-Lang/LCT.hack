@@ -58,7 +58,8 @@ class _LessonScreenState extends State<LessonScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${lesson.track.emoji} ${lesson.grade} класс'),
+        title: Text(
+            '${lesson.track.emoji} ${lesson.track.gradeLabel(lesson.grade)}'),
       ),
       body: SafeArea(
         child: ListView(
@@ -250,9 +251,14 @@ class _ResultPanel extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final String title;
     if (result.correct) {
-      title = result.reward > 0
-          ? '🎉 Верно! +${result.reward} 🪙'
-          : '🎉 Верно! Ты это помнишь!';
+      if (result.reward > 0) {
+        title = '🎉 Верно! +${result.reward} 🪙';
+      } else if (result.dailyLimitReached) {
+        title = '🎉 Верно! +$lessonXp ✨ Монетки за задания на сегодня '
+            'уже получены — завтра будут снова.';
+      } else {
+        title = '🎉 Верно! Ты это помнишь!';
+      }
     } else {
       title = result.alreadySolved
           ? '🤔 Не то. Попробуй ещё раз!'

@@ -130,8 +130,9 @@ class _QuestsScreenState extends State<QuestsScreen> {
           const SizedBox(height: 12),
           _AdviceCard(
             text: age == null
-                ? 'Начни с 1 класса. Открыто всё!'
-                : 'Для ${PlayerProfile.labelFor(age)} — $recommended класс ⭐. '
+                ? 'Начни с первого уровня. Открыто всё!'
+                : 'Для ${PlayerProfile.labelFor(age)} — '
+                    '${_track.gradeLabel(recommended)} ⭐. '
                     'Открыто всё!',
           ),
           if (retry.isNotEmpty) ...[
@@ -179,9 +180,10 @@ class _QuestsScreenState extends State<QuestsScreen> {
             bottom: 12,
             child: _GuideCard(
               text: age == null
-                  ? 'Привет! Начни с 1 класса — а дальше выбирай сам.'
+                  ? 'Привет! Начни с первого уровня — а дальше выбирай сам.'
                   : 'Привет! Тебе ${PlayerProfile.labelFor(age)}. '
-                      'Твой уровень — $recommended класс. Пойдём туда?',
+                      'Твой уровень — ${_track.gradeLabel(recommended)}. '
+                      'Пойдём туда?',
               onGo: _followGuide,
               onClose: _closeGuide,
             ),
@@ -458,7 +460,7 @@ class _GradeSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$grade класс • ${solved.length}/${lessons.length}',
+                      '${track.gradeLabel(grade)} • ${solved.length}/${lessons.length}',
                       style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                     Text(
