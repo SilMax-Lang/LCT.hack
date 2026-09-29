@@ -21,7 +21,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-SCHEMA_VERSION = "2.0"
+SCHEMA_VERSION = "2.1"
 
 
 class ProgressModel(BaseModel):
@@ -94,17 +94,6 @@ class LessonsState(ProgressModel):
         return self
 
 
-class SkinsState(ProgressModel):
-    owned: list[str] = Field(default_factory=list, description="Купленные образы (навсегда)")
-    equipped: str | None = Field(default=None, description="Надетый образ; null — обычный")
-
-    @model_validator(mode="after")
-    def _check(self) -> "SkinsState":
-        if self.equipped is not None and self.equipped not in self.owned:
-            raise ValueError("skins: надеть можно только купленный образ")
-        return self
-
-
 class StreakState(ProgressModel):
     days: int = Field(default=0, ge=0, description="Огонёк: дней подряд с действием")
     last_action_date: date | None = None
@@ -123,7 +112,10 @@ class ProgressSnapshot(ProgressModel):
     goal: GoalState
     inventory: list[InventoryEntry] = Field(default_factory=list, description="Рюкзачок")
     lessons: LessonsState = Field(default_factory=LessonsState)
-    skins: SkinsState = Field(default_factory=SkinsState)
+    owned: list[str] = Field(
+        default_factory=list,
+        description="Купленное навсегда: вещи для дома, курсы, украшения коллекции",
+    )
     streak: StreakState = Field(default_factory=StreakState)
     last_bonus_date: date | None = Field(default=None, description="Когда выдан бонус за вход")
     settings: ProfileSettings = Field(default_factory=ProfileSettings)
@@ -133,6 +125,8 @@ class ProgressSnapshot(ProgressModel):
         ids = [entry.item_id for entry in self.inventory]
         if len(set(ids)) != len(ids):
             raise ValueError("inventory: товар должен встречаться один раз")
+        if len(set(self.owned)) != len(self.owned):
+            raise ValueError("owned: покупка навсегда должна встречаться один раз")
         if self.lessons.last_solved_day > self.day:
             raise ValueError("lessons.last_solved_day не может быть позже текущего дня")
         return self

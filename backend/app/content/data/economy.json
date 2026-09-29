@@ -28,37 +28,62 @@
     "day": 1
   },
   "income": {
-    "depends_on": "pet_level",
-    "base": 40,
-    "per_level": 10,
-    "explain": "Доход за день = 40 + уровень питомца × 10.",
+    "depends_on": "courses",
+    "base": 50,
+    "explain": "Доход за день — 50 монет; каждый пройденный курс (магазин → «Обучение», по порядку) поднимает его.",
     "table": [
       {
-        "level": 1,
+        "courses": 0,
         "income": 50
       },
       {
-        "level": 2,
+        "courses": 1,
         "income": 60
       },
       {
-        "level": 3,
-        "income": 70
+        "courses": 2,
+        "income": 75
       },
       {
-        "level": 4,
-        "income": 80
+        "courses": 3,
+        "income": 95
       },
       {
-        "level": 5,
-        "income": 90
+        "courses": 4,
+        "income": 120
+      }
+    ],
+    "courses": [
+      {
+        "course_id": "course_abc",
+        "title": "Азбука финансов",
+        "price": 20,
+        "income_after": 60
+      },
+      {
+        "course_id": "course_saver",
+        "title": "Мастер накоплений",
+        "price": 40,
+        "income_after": 75
+      },
+      {
+        "course_id": "course_future",
+        "title": "Вклад в будущее",
+        "price": 80,
+        "income_after": 95
+      },
+      {
+        "course_id": "course_math",
+        "title": "Учебник математики",
+        "price": 160,
+        "income_after": 120
       }
     ],
     "sources": [
       {
         "id": "day_income",
         "title": "Доход за день",
-        "explain": "Начисляется кнопкой «Новый день», растёт с уровнем питомца."
+        "explain": "Начисляется кнопкой «Новый день», растёт с курсами."
       },
       {
         "id": "daily_bonus",
@@ -68,12 +93,27 @@
       {
         "id": "lesson_reward",
         "title": "Награда за задание",
-        "explain": "Только за первое верное решение, 5 + класс × 10 монет."
+        "explain": "Первое верное решение, 10–25 монет, не больше 2 заданий в день."
       },
       {
         "id": "level_up",
         "title": "Новый уровень питомца",
         "explain": "Монетки за каждый новый уровень."
+      },
+      {
+        "id": "streak_bonus",
+        "title": "Бонус огонька",
+        "explain": "3 и 7 дней подряд с действием, дальше каждые 7 дней."
+      },
+      {
+        "id": "deposit_interest",
+        "title": "Проценты по вкладу",
+        "explain": "20 % копилки раз в игровой год (5 дней), не больше 500."
+      },
+      {
+        "id": "decoration_sale",
+        "title": "Продажа украшения",
+        "explain": "Магазин выкупает украшение за 70 % цены."
       },
       {
         "id": "savings_withdraw",
@@ -94,20 +134,16 @@
   "xp_rules": [
     {
       "id": "lesson_solved",
-      "xp": 10,
+      "xp": 5,
       "explain": "Первое верное решение задания."
     },
     {
-      "id": "savings_deposit",
-      "xp": 5,
-      "explain": "Каждое пополнение копилки."
-    },
-    {
-      "id": "item_used",
-      "xp": 5,
-      "explain": "Использование предмета; у части товаров больше — см. effects.xp."
+      "id": "day_end",
+      "xp": 10,
+      "explain": "Конец дня, до 10: 1 + по 3 за каждое решение дня — питомец сыт и чист (сытость и чистота больше 40), план подтверждён и выполнен, в копилку отложено."
     }
   ],
+  "xp_per_day_max": 25,
   "stats": [
     {
       "id": "satiety",
@@ -123,7 +159,7 @@
       "emoji": "😊",
       "max": 100,
       "decay_per_day": 10,
-      "low_threshold": 40
+      "low_threshold": 33
     },
     {
       "id": "cleanliness",
@@ -143,91 +179,23 @@
   "savings": {
     "quick_amounts": [
       10,
-      25,
+      20,
       50
     ],
-    "plan_quick_amount": 20,
     "withdraw_amount": 10,
     "withdraw_requires_confirmation": true,
-    "suggested_per_day": 25
+    "eta_average_days": 5,
+    "deposit": {
+      "rate_per_year": 0.2,
+      "days_per_year": 5,
+      "interest_cap": 500
+    }
   },
   "streak": {
     "counts": "Дни подряд, в которые было хотя бы одно действие: кормление, покупка, копилка или задание.",
     "resets_after_missed_day": true,
-    "coins_bonus": false
-  },
-  "player": {
-    "min_age": 7,
-    "max_age": 10,
-    "max_age_label": "10+"
-  },
-  "rules": {
-    "negative_balance_forbidden": true,
-    "purchase_requires_confirmation": false,
-    "savings_withdraw_requires_confirmation": true,
-    "quests_reward_coins": true,
-    "mistake_creates_retry_task": true,
-    "mistake_loses_progress": false
-  },
-  "messages": {
-    "goal_reached": "Цель «{goal}» накоплена! 🎉",
-    "retry_lesson": "Попробуем задание ещё раз? 🔁",
-    "lesson_waiting": "Реши задание — получишь монетки ⭐",
-    "streak_unlit": "Покорми питомца, реши задание или отложи монетки — и огонёк загорится."
-  },
-  "from_documents": {
-    "note": "Механики из документов команды (игровая экономика, ТЗ экранов), которых в приложении пока нет. Сервер отдаёт их как справочные значения; приложение ими не пользуется.",
-    "sources": [
-      "Игровая_экономика_Финни_редакция.docx",
-      "ТЗ_Питомец_Финни.docx"
-    ],
-    "courses": {
-      "start_income": 50,
-      "sequential": true,
-      "buy_once": true,
-      "items": [
-        {
-          "id": "course_finance_abc",
-          "title": "Азбука финансов",
-          "price": 20,
-          "education_level": 2,
-          "income_after": 60
-        },
-        {
-          "id": "course_savings_master",
-          "title": "Мастер накоплений",
-          "price": 40,
-          "education_level": 3,
-          "income_after": 75
-        },
-        {
-          "id": "course_future_deposit",
-          "title": "Вклад в будущее",
-          "price": 80,
-          "education_level": 4,
-          "income_after": 95
-        },
-        {
-          "id": "course_math_book",
-          "title": "Учебник математики",
-          "price": 160,
-          "education_level": 5,
-          "income_after": 120
-        }
-      ]
-    },
-    "deposit": {
-      "annual_rate": 0.2,
-      "interest_cap": 500,
-      "accrual": "on_year_change",
-      "quick_amounts": [
-        10,
-        20,
-        50
-      ],
-      "withdraw_requires_confirmation": true
-    },
-    "streak_bonuses": [
+    "coins_bonus": true,
+    "bonuses": [
       {
         "days": 3,
         "coins": 10,
@@ -243,88 +211,59 @@
         "coins": 10,
         "repeat": true
       }
+    ]
+  },
+  "budget_plan": {
+    "baskets": [
+      "mandatory",
+      "optional",
+      "education",
+      "savings"
     ],
-    "budget_plan": {
-      "step": 5,
-      "alt_step": 10,
-      "directions": [
-        "mandatory",
-        "optional",
-        "education",
-        "savings"
-      ],
-      "allow_unallocated": true,
-      "unallocated_hint": "У тебя осталось {amount} монеток. Может, добавим их в копилку на мечту?"
-    },
-    "decorations": {
-      "total": 20,
-      "rarities": [
-        {
-          "id": "common",
-          "title": "Обычные",
-          "count": 10,
-          "min_price": 10,
-          "max_price": 30
-        },
-        {
-          "id": "rare",
-          "title": "Редкие",
-          "count": 6,
-          "min_price": 40,
-          "max_price": 80
-        },
-        {
-          "id": "epic",
-          "title": "Эпические",
-          "count": 4,
-          "min_price": 100,
-          "max_price": 200
-        }
-      ],
-      "resale_rate": 0.7,
-      "sale_requires_confirmation": true
-    },
-    "functional_items": [
-      {
-        "id": "bowl",
-        "title": "Миска",
-        "price": 5
-      },
-      {
-        "id": "drinker",
-        "title": "Поилка",
-        "price": 15
-      },
-      {
-        "id": "bed",
-        "title": "Лежанка",
-        "price": 50
-      }
+    "steps": [
+      5,
+      10
     ],
-    "purchase_block": {
-      "when_stat": "satiety",
-      "lte": 40,
-      "blocked": [
-        "toys",
-        "education"
-      ],
-      "message": "{pet_name} слишком голоден, чтобы играть или учиться! Сначала накорми его."
-    },
-    "xp_stages": [
+    "confirm_locks_plan": true,
+    "shows_plan_vs_fact": true,
+    "new_plan_each_day": true,
+    "unallocated_hint": "У тебя осталось {amount} монеток. Может, добавим их в копилку на мечту?"
+  },
+  "player": {
+    "min_age": 7,
+    "max_age": 10,
+    "max_age_label": "10+"
+  },
+  "rules": {
+    "negative_balance_forbidden": true,
+    "purchase_requires_confirmation": true,
+    "savings_withdraw_requires_confirmation": true,
+    "quests_reward_coins": true,
+    "mistake_creates_retry_task": true,
+    "mistake_loses_progress": false
+  },
+  "messages": {
+    "goal_reached": "Цель «{goal}» накоплена! 🎉",
+    "retry_lesson": "Попробуем задание ещё раз? 🔁",
+    "lesson_waiting": "Реши задание — получишь монетки ⭐",
+    "streak_unlit": "Покорми питомца, реши задание или отложи монетки — и огонёк загорится."
+  },
+  "from_documents": {
+    "note": "Отличия приложения от документов команды. Всё остальное из документов (курсы, вклад, бонусы огонька, украшения, план бюджета, подтверждение покупки, блок при голоде) реализовано и описано в основных разделах.",
+    "sources": [
+      "Игровая_экономика_Финни_редакция.docx",
+      "ТЗ_Питомец_Финни.docx"
+    ],
+    "differences": [
       {
-        "id": "baby",
-        "title": "Малыш",
-        "min_xp": 0
+        "topic": "stages",
+        "documents": "Малыш / Ученик / Исследователь по опыту: 0, 100, 200 XP",
+        "app": "те же названия, этап по уровню питомца: 1–11, 12–34, 35+"
       },
       {
-        "id": "student",
-        "title": "Ученик",
-        "min_xp": 100
-      },
-      {
-        "id": "explorer",
-        "title": "Исследователь",
-        "min_xp": 200
+        "topic": "deposit_year",
+        "documents": "проценты по вкладу при смене года",
+        "app": "игровой год — 5 дней, чтобы проценты было видно в демо-режиме"
       }
     ]
   }

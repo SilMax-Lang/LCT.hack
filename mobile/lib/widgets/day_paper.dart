@@ -71,6 +71,8 @@ class DayPaper extends StatelessWidget {
                 const _DashedLine(),
                 const SizedBox(height: 6),
                 _row('🪙', 'Доход за день', '+${summary.income}', plus),
+                if (summary.interest > 0)
+                  _row('🏦', 'Проценты по вкладу', '+${summary.interest}', plus),
                 _lostRow('🍎', 'Сытость', summary.hungerLost),
                 _lostRow('😊', 'Счастье', summary.happinessLost),
                 _lostRow('🧼', 'Чистота', summary.cleanlinessLost),
@@ -82,19 +84,26 @@ class DayPaper extends StatelessWidget {
                 _row('🎯', 'Осталось до цели', '${summary.goalLeft}', ink),
                 const SizedBox(height: 8),
                 const _DashedLine(doubleLine: true),
-                const SizedBox(height: 12),
-                Text(
-                  'Копим на «${summary.goalName}» 🎯',
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 16, color: inkSoft),
-                ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 10),
                 const Text(
-                  'Не забудь покормить питомца! 🐾',
+                  '🌱 Рост питомца за вчера',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: ink,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                DayChecks(summary: summary, color: ink),
+                const SizedBox(height: 10),
+                Text(
+                  '💡 ${summary.advice}',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: inkSoft),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: inkSoft,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 KidsButton(
@@ -150,6 +159,40 @@ class DayPaper extends StatelessWidget {
   /// Просадка за день. Ноль показываем прочерком: «−0» выглядит как ошибка.
   Widget _lostRow(String emoji, String label, int lost) {
     return _row(emoji, label, lost == 0 ? '—' : '−$lost', minus);
+  }
+}
+
+/// Три решения дня, от которых растёт питомец: ✅ / ❌ и текстом —
+/// не только цветом. Используется и в «бумажке», и в дневнике.
+class DayChecks extends StatelessWidget {
+  final DaySummary summary;
+  final Color? color;
+
+  const DayChecks({super.key, required this.summary, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyle(fontSize: 16, color: color, height: 1.4);
+    String mark(bool ok) => ok ? '✅' : '❌';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('${mark(summary.needsMet)} Питомец сыт и чист', style: style),
+        Text(
+          summary.planConfirmed
+              ? '${mark(summary.planKept)} Уложились в план'
+              : '❌ План не составлен',
+          style: style,
+        ),
+        Text('${mark(summary.saved)} Отложили в копилку', style: style),
+        Text(
+          summary.growthXp > 0
+              ? '✨ Питомцу +${summary.growthXp} опыта'
+              : '✨ Опыт за день уже набран',
+          style: style.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
   }
 }
 

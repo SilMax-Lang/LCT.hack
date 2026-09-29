@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finny_pet/app.dart';
-import 'package:finny_pet/models/game_state.dart';
+import 'package:finny_pet/data/shop_data.dart';
 
 import 'game_fixture.dart';
 import 'real_fonts.dart';
@@ -25,7 +25,7 @@ void main() {
     final summary = game.nextDay();
 
     expect(summary.day, 2);
-    expect(summary.income, incomeForLevel(1));
+    expect(summary.income, startIncome);
     expect(summary.hungerLost, 10, reason: 'сытости было 10, больше не уйдёт');
     expect(summary.happinessLost, 10);
     expect(summary.cleanlinessLost, 12);
@@ -58,12 +58,16 @@ void main() {
 
     expect(find.text('Итоги дня'), findsOneWidget);
     expect(find.text('☀️ День 2'), findsOneWidget);
-    expect(find.text('+${incomeForLevel(1)}'), findsOneWidget);
+    expect(find.text('+$startIncome'), findsOneWidget);
     expect(find.text('В кошельке'), findsOneWidget);
     expect(find.text('В копилке'), findsOneWidget);
     expect(find.text('Осталось до цели'), findsOneWidget);
     expect(tester.takeException(), isNull, reason: 'бумажка переполнилась');
 
+    // Итоги с ростом питомца — бумажка длиннее, кнопка внизу прокрутки.
+    expect(find.text('🌱 Рост питомца за вчера'), findsOneWidget);
+    await tester.ensureVisible(find.text('Играем дальше!'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Играем дальше!'));
     await tester.pumpAndSettle();
     expect(find.text('Итоги дня'), findsNothing);

@@ -32,13 +32,13 @@ void main() {
     test('названия совпадают с README', () {
       expect(PetLook.of(PetType.cat, PetVariant.v1).label, 'Рыжик');
       expect(PetLook.of(PetType.cat, PetVariant.v2).label, 'Дымок');
-      expect(PetLook.of(PetType.cat, PetVariant.v3).label, 'Снежок');
+      expect(PetLook.of(PetType.cat, PetVariant.v3).label, 'Ночка');
       expect(PetLook.of(PetType.dog, PetVariant.v1).label, 'Шоколад');
       expect(PetLook.of(PetType.dog, PetVariant.v2).label, 'Карамель');
       expect(PetLook.of(PetType.dog, PetVariant.v3).label, 'Уголёк');
-      expect(PetLook.of(PetType.penguin, PetVariant.v1).label, 'Морячок');
-      expect(PetLook.of(PetType.penguin, PetVariant.v2).label, 'Льдинка');
-      expect(PetLook.of(PetType.penguin, PetVariant.v3).label, 'Пончик');
+      expect(PetLook.of(PetType.raccoon, PetVariant.v1).label, 'Рыжий');
+      expect(PetLook.of(PetType.raccoon, PetVariant.v2).label, 'Серый');
+      expect(PetLook.of(PetType.raccoon, PetVariant.v3).label, 'Ледяной');
     });
   });
 

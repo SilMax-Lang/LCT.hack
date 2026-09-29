@@ -41,6 +41,11 @@ extension LessonTrackInfo on LessonTrack {
     }
   }
 
+  /// Подпись ступени дороги: у математики — класс, у финансов — уровень
+  /// (три раздела на четыре класса).
+  String gradeLabel(int grade) =>
+      this == LessonTrack.math ? '$grade класс' : '$grade уровень';
+
   /// Название раздела дороги для класса.
   String sectionTitle(int grade) {
     if (this == LessonTrack.finance) {
@@ -65,6 +70,70 @@ extension LessonTrackInfo on LessonTrack {
     }
   }
 }
+
+/// Темы ТЗ (п. 2.5.8): планирование бюджета, сбережения, платежи и
+/// покупки. Остальное — просто счёт. Нужны родителю («пройденные темы»)
+/// и карте контента.
+enum FinTopic { budget, savings, purchases, counting }
+
+extension FinTopicInfo on FinTopic {
+  String get title {
+    switch (this) {
+      case FinTopic.budget:
+        return 'Планирование бюджета';
+      case FinTopic.savings:
+        return 'Сбережения и цель';
+      case FinTopic.purchases:
+        return 'Платежи и покупки';
+      case FinTopic.counting:
+        return 'Счёт с деньгами';
+    }
+  }
+
+  String get emoji {
+    switch (this) {
+      case FinTopic.budget:
+        return '📋';
+      case FinTopic.savings:
+        return '🐷';
+      case FinTopic.purchases:
+        return '🛒';
+      case FinTopic.counting:
+        return '🧮';
+    }
+  }
+}
+
+/// Тема задания по id. Новое задание без строки здесь — «счёт».
+const Map<String, FinTopic> lessonTopics = {
+  'fin_1_food': FinTopic.purchases,
+  'fin_1_want_need': FinTopic.purchases,
+  'fin_1_change': FinTopic.purchases,
+  'fin_1_piggy': FinTopic.savings,
+  'fin_1_shortage': FinTopic.purchases,
+  'fin_2_bed': FinTopic.savings,
+  'fin_2_budget': FinTopic.budget,
+  'fin_2_mistake': FinTopic.budget,
+  'fin_2_withdraw': FinTopic.savings,
+  'fin_2_vitamins': FinTopic.purchases,
+  'fin_3_growth': FinTopic.budget,
+  'fin_3_vet': FinTopic.budget,
+  'fin_3_deposit': FinTopic.savings,
+  'fin_3_craft': FinTopic.budget,
+  'fin_3_plan_fact': FinTopic.budget,
+  'math_1_ball': FinTopic.purchases,
+  'math_1_missing': FinTopic.purchases,
+  'math_1_compare': FinTopic.purchases,
+  'math_2_week_food': FinTopic.budget,
+  'math_2_weeks': FinTopic.savings,
+  'math_3_discount': FinTopic.purchases,
+  'math_3_percent': FinTopic.savings,
+  'math_4_balance': FinTopic.budget,
+  'math_4_kopecks': FinTopic.purchases,
+  'math_4_wholesale': FinTopic.purchases,
+  'math_4_cashback': FinTopic.purchases,
+  'math_4_dynamic_goal': FinTopic.savings,
+};
 
 class Lesson {
   final String id;
@@ -101,20 +170,35 @@ class Lesson {
 
   /// Чем старше класс, тем больше монет.
   int get reward => rewardForGrade(grade);
+
+  FinTopic get topic => lessonTopics[id] ?? FinTopic.counting;
 }
 
-int rewardForGrade(int grade) => 5 + grade * 10;
+/// Награда за задание: 10 / 15 / 20 / 25 монет за 1–4 уровень.
+int rewardForGrade(int grade) => 5 + grade * 5;
+
+/// Монеты дают не больше чем за столько заданий за игровой день —
+/// чтобы задания не заменяли заботу о питомце и бюджет.
+const int rewardedLessonsPerDay = 2;
 
 /// Опыт питомцу за решённое задание.
-const int lessonXp = 10;
+const int lessonXp = 5;
 
-/// Какой класс рекомендуем по возрасту: 7 лет — 1 класс, 8 — 2, 9 — 3,
-/// 10+ — 4 (или последний, если на дороге столько классов нет).
-int recommendedGrade(int? age, LessonTrack track) {
-  final maxGrade = gradesOf(track).last;
+/// Школьный класс по возрасту: 7 лет — 1 класс, 8 — 2, 9 — 3, 10+ — 4.
+int schoolClass(int? age) {
   if (age == null) return 1;
-  final grade = age - 6;
-  if (grade < 1) return 1;
+  return (age - 6).clamp(1, 4);
+}
+
+/// Какой уровень дороги рекомендуем по возрасту.
+///
+/// Математика идёт по классам 1–4. У «Финансов» три раздела:
+/// 1–2 класс — «Азбука финансов», 3 класс — «Мастер накоплений»,
+/// 4 класс — «Вклад в будущее».
+int recommendedGrade(int? age, LessonTrack track) {
+  final cls = schoolClass(age);
+  final grade = track == LessonTrack.finance ? (cls <= 2 ? 1 : cls - 1) : cls;
+  final maxGrade = gradesOf(track).last;
   return grade > maxGrade ? maxGrade : grade;
 }
 

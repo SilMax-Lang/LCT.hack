@@ -59,7 +59,8 @@ class _SparkOnActionState extends State<SparkOnAction>
   @override
   void didUpdateWidget(covariant SparkOnAction oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.trigger > oldWidget.trigger) {
+    final off = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (widget.trigger > oldWidget.trigger && !off) {
       setState(() => _playing = true);
       _controller.forward(from: 0);
     }

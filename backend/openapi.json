@@ -74,7 +74,8 @@
                 {
                   "enum": [
                     "mandatory",
-                    "optional"
+                    "optional",
+                    "education"
                   ],
                   "type": "string"
                 },
@@ -82,10 +83,10 @@
                   "type": "null"
                 }
               ],
-              "description": "mandatory («надо») | optional",
+              "description": "mandatory («надо») | optional («хочу») | education",
               "title": "Kind"
             },
-            "description": "mandatory («надо») | optional"
+            "description": "mandatory («надо») | optional («хочу») | education"
           },
           {
             "name": "category",
@@ -421,8 +422,8 @@
         "tags": [
           "Справочники"
         ],
-        "summary": "Питомец: виды, окраски, образы, этапы, настроение",
-        "description": "Три вида × три окраски = 9 комбинаций (ТЗ 2.6), покупные образы, этапы взросления по уровню, правила настроения и готовые имена для кубика.",
+        "summary": "Питомец: виды, окраски, этапы, эмоции, настроение",
+        "description": "Три вида × три окраски = 9 комбинаций (ТЗ 2.6), перекраска, этапы взросления по уровню, правила настроения и готовые имена для кубика.",
         "operationId": "get_pets_api_v1_content_pets_get",
         "responses": {
           "200": {
@@ -447,7 +448,7 @@
           "Справочники"
         ],
         "summary": "Правила игровой экономики",
-        "description": "Константы приложения: старт, доход по уровню питомца, бонус за вход, опыт и уровни, расход показателей за день, копилка, огонёк, обязательные правила. Блок `from_documents` — механики из документов команды, которых в приложении пока нет (вклад, курсы, украшения).",
+        "description": "Константы приложения: старт, доход от курсов, бонус за вход, опыт (с потолком за день) и уровни, расход показателей за день, вклад, огонёк с бонусами, план бюджета, обязательные правила. Блок `from_documents` — где приложение сознательно отличается от документов.",
         "operationId": "get_economy_api_v1_content_economy_get",
         "responses": {
           "200": {
@@ -694,16 +695,79 @@
           "grade": {
             "type": "integer",
             "minimum": 1.0,
-            "title": "Grade"
+            "title": "Grade",
+            "description": "Класс = возраст − 6; он же уровень математики"
+          },
+          "finance_level": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Finance Level",
+            "description": "Уровень «Финансов»: 1–2 класс → 1, 3 → 2, 4 → 3"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "age",
-          "grade"
+          "grade",
+          "finance_level"
         ],
         "title": "AgeGrade"
+      },
+      "BudgetPlanRules": {
+        "properties": {
+          "baskets": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "mandatory",
+                "optional",
+                "education",
+                "savings"
+              ]
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Baskets"
+          },
+          "steps": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Steps"
+          },
+          "confirm_locks_plan": {
+            "type": "boolean",
+            "const": true,
+            "title": "Confirm Locks Plan",
+            "description": "ТЗ: после подтверждения — план/факт"
+          },
+          "shows_plan_vs_fact": {
+            "type": "boolean",
+            "title": "Shows Plan Vs Fact"
+          },
+          "new_plan_each_day": {
+            "type": "boolean",
+            "title": "New Plan Each Day"
+          },
+          "unallocated_hint": {
+            "type": "string",
+            "title": "Unallocated Hint"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "baskets",
+          "steps",
+          "confirm_locks_plan",
+          "shows_plan_vs_fact",
+          "new_plan_each_day",
+          "unallocated_hint"
+        ],
+        "title": "BudgetPlanRules"
       },
       "CatalogCategory": {
         "properties": {
@@ -723,10 +787,23 @@
             "type": "string",
             "enum": [
               "mandatory",
-              "optional"
+              "optional",
+              "education"
             ],
             "title": "Kind",
-            "description": "mandatory — «надо», optional — «хочу»"
+            "description": "Корзина бюджета: mandatory — «надо», optional — «хочу», education — обучение"
+          },
+          "permanent": {
+            "type": "boolean",
+            "title": "Permanent",
+            "description": "Покупается один раз и остаётся навсегда",
+            "default": false
+          },
+          "blocked_when_hungry": {
+            "type": "boolean",
+            "title": "Blocked When Hungry",
+            "description": "Закрыт, пока питомец голоден (игрушки, обучение)",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -779,6 +856,9 @@
           },
           "deal_of_day": {
             "$ref": "#/components/schemas/DealOfDay"
+          },
+          "purchase_rules": {
+            "$ref": "#/components/schemas/PurchaseRules"
           }
         },
         "additionalProperties": false,
@@ -788,7 +868,8 @@
           "updated_at",
           "categories",
           "items",
-          "deal_of_day"
+          "deal_of_day",
+          "purchase_rules"
         ],
         "title": "CatalogFile"
       },
@@ -812,7 +893,8 @@
             "type": "string",
             "enum": [
               "mandatory",
-              "optional"
+              "optional",
+              "education"
             ],
             "title": "Kind"
           },
@@ -844,6 +926,54 @@
             ],
             "title": "Badge",
             "description": "Ярлык на карточке: «Хит», «Новинка»…"
+          },
+          "permanent": {
+            "type": "boolean",
+            "title": "Permanent",
+            "default": false
+          },
+          "rarity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "common",
+                  "rare",
+                  "epic"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rarity",
+            "description": "Редкость — только у украшений коллекции"
+          },
+          "income_after": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Income After",
+            "description": "Доход за день после курса — только у обучения"
+          },
+          "resale_price": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resale Price",
+            "description": "За сколько магазин выкупит украшение (70 %)"
           }
         },
         "additionalProperties": false,
@@ -984,6 +1114,37 @@
         "title": "ContentWarning",
         "description": "Мягкое предупреждение о ссылке на неизвестный серверу контент.\n\nНе ошибка: у приложения может быть более новый контент, и терять из-за\nэтого прогресс нельзя."
       },
+      "Course": {
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "title": "Course Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "price": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Price"
+          },
+          "income_after": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Income After"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "course_id",
+          "title",
+          "price",
+          "income_after"
+        ],
+        "title": "Course"
+      },
       "Currency": {
         "properties": {
           "code": {
@@ -1109,6 +1270,36 @@
         ],
         "title": "DealOfDay"
       },
+      "DepositRules": {
+        "properties": {
+          "rate_per_year": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Rate Per Year"
+          },
+          "days_per_year": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Days Per Year",
+            "description": "Игровой год в днях"
+          },
+          "interest_cap": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Interest Cap",
+            "description": "Потолок процентов за одно начисление"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rate_per_year",
+          "days_per_year",
+          "interest_cap"
+        ],
+        "title": "DepositRules"
+      },
       "EconomyFile": {
         "properties": {
           "version": {
@@ -1155,6 +1346,12 @@
             "minItems": 1,
             "title": "Xp Rules"
           },
+          "xp_per_day_max": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Xp Per Day Max",
+            "description": "Потолок опыта за игровой день"
+          },
           "stats": {
             "items": {
               "$ref": "#/components/schemas/PetStat"
@@ -1171,6 +1368,9 @@
           },
           "streak": {
             "$ref": "#/components/schemas/StreakRules"
+          },
+          "budget_plan": {
+            "$ref": "#/components/schemas/BudgetPlanRules"
           },
           "player": {
             "$ref": "#/components/schemas/PlayerRules"
@@ -1189,7 +1389,7 @@
             "additionalProperties": true,
             "type": "object",
             "title": "From Documents",
-            "description": "Механики из документов команды, которых в приложении пока нет (вклад 20%, курсы, бонусы огонька, украшения). Справочно."
+            "description": "Где приложение сознательно отличается от документов команды. Справочно."
           }
         },
         "additionalProperties": false,
@@ -1203,10 +1403,12 @@
           "daily_bonus",
           "level_up",
           "xp_rules",
+          "xp_per_day_max",
           "stats",
           "period",
           "savings",
           "streak",
+          "budget_plan",
           "player",
           "rules",
           "messages"
@@ -1470,10 +1672,11 @@
       },
       "IncomeLevel": {
         "properties": {
-          "level": {
+          "courses": {
             "type": "integer",
-            "minimum": 1.0,
-            "title": "Level"
+            "minimum": 0.0,
+            "title": "Courses",
+            "description": "Сколько курсов пройдено"
           },
           "income": {
             "type": "integer",
@@ -1484,7 +1687,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "level",
+          "courses",
           "income"
         ],
         "title": "IncomeLevel"
@@ -1493,18 +1696,13 @@
         "properties": {
           "depends_on": {
             "type": "string",
-            "const": "pet_level",
+            "const": "courses",
             "title": "Depends On"
           },
           "base": {
             "type": "integer",
             "minimum": 0.0,
             "title": "Base"
-          },
-          "per_level": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Per Level"
           },
           "explain": {
             "type": "string",
@@ -1517,6 +1715,13 @@
             "type": "array",
             "minItems": 1,
             "title": "Table"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/Course"
+            },
+            "type": "array",
+            "title": "Courses"
           },
           "sources": {
             "items": {
@@ -1532,9 +1737,9 @@
         "required": [
           "depends_on",
           "base",
-          "per_level",
           "explain",
           "table",
+          "courses",
           "sources"
         ],
         "title": "IncomeRules"
@@ -1759,6 +1964,12 @@
             "type": "boolean",
             "title": "Reward Only First Solve"
           },
+          "rewarded_lessons_per_day": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Rewarded Lessons Per Day",
+            "description": "Монеты — не больше чем за N заданий в день"
+          },
           "mistake_goes_to_retry": {
             "type": "boolean",
             "title": "Mistake Goes To Retry",
@@ -1790,6 +2001,7 @@
           "reward_per_grade",
           "xp_per_lesson",
           "reward_only_first_solve",
+          "rewarded_lessons_per_day",
           "mistake_goes_to_retry",
           "mistake_penalty",
           "age_to_grade",
@@ -1965,6 +2177,41 @@
         ],
         "title": "PeriodRules"
       },
+      "PetEmotions": {
+        "properties": {
+          "stat": {
+            "type": "string",
+            "const": "happiness",
+            "title": "Stat"
+          },
+          "sad_below": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Sad Below"
+          },
+          "happy_above": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Happy Above"
+          },
+          "explain": {
+            "type": "string",
+            "title": "Explain"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "stat",
+          "sad_below",
+          "happy_above",
+          "explain"
+        ],
+        "title": "PetEmotions",
+        "description": "Эмоция модели по счастью: у каждой свой ролик (грустный, обычный, весёлый)."
+      },
       "PetMood": {
         "properties": {
           "id": {
@@ -2037,59 +2284,6 @@
         ],
         "title": "PetMood",
         "description": "Настроение. Правила проверяются по порядку, последнее — запасное, без условия.\n\n`stat: min` — самый низкий из трёх показателей."
-      },
-      "PetSkin": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "species": {
-            "type": "string",
-            "title": "Species"
-          },
-          "title": {
-            "type": "string",
-            "title": "Title"
-          },
-          "emoji": {
-            "type": "string",
-            "title": "Emoji"
-          },
-          "price": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Price"
-          },
-          "description": {
-            "type": "string",
-            "title": "Description"
-          },
-          "bg_start": {
-            "type": "string",
-            "pattern": "^#[0-9A-F]{6}$",
-            "title": "Bg Start"
-          },
-          "bg_end": {
-            "type": "string",
-            "pattern": "^#[0-9A-F]{6}$",
-            "title": "Bg End"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "id",
-          "species",
-          "title",
-          "emoji",
-          "price",
-          "description",
-          "bg_start",
-          "bg_end"
-        ],
-        "title": "PetSkin",
-        "description": "Образ питомца: покупается навсегда, надевается только на свой вид."
       },
       "PetSpecies": {
         "properties": {
@@ -2346,12 +2540,11 @@
             "type": "array",
             "title": "Species"
           },
-          "skins": {
-            "items": {
-              "$ref": "#/components/schemas/PetSkin"
-            },
-            "type": "array",
-            "title": "Skins"
+          "recolor_price": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Recolor Price",
+            "description": "Перекраска питомца в магазине"
           },
           "stages": {
             "items": {
@@ -2359,6 +2552,9 @@
             },
             "type": "array",
             "title": "Stages"
+          },
+          "emotions": {
+            "$ref": "#/components/schemas/PetEmotions"
           },
           "moods": {
             "items": {
@@ -2385,8 +2581,9 @@
           "version",
           "updated_at",
           "species",
-          "skins",
+          "recolor_price",
           "stages",
+          "emotions",
           "moods",
           "name_suggestions",
           "nickname_rules"
@@ -2533,7 +2730,7 @@
           "schema_version": {
             "type": "string",
             "title": "Schema Version",
-            "default": "2.0"
+            "default": "2.1"
           },
           "revision": {
             "type": "integer",
@@ -2576,8 +2773,13 @@
           "lessons": {
             "$ref": "#/components/schemas/LessonsState"
           },
-          "skins": {
-            "$ref": "#/components/schemas/SkinsState"
+          "owned": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Owned",
+            "description": "Купленное навсегда: вещи для дома, курсы, украшения коллекции"
           },
           "streak": {
             "$ref": "#/components/schemas/StreakState"
@@ -2612,6 +2814,56 @@
         ],
         "title": "ProgressSnapshot",
         "description": "Полный снимок локального профиля."
+      },
+      "PurchaseRules": {
+        "properties": {
+          "requires_confirmation": {
+            "type": "boolean",
+            "title": "Requires Confirmation",
+            "description": "Окно «Купить / Отменить»"
+          },
+          "hungry_block_at_satiety": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Hungry Block At Satiety"
+          },
+          "hungry_block_message": {
+            "type": "string",
+            "title": "Hungry Block Message"
+          },
+          "courses_sequential": {
+            "type": "boolean",
+            "title": "Courses Sequential"
+          },
+          "start_income": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start Income"
+          },
+          "decorations_resale_rate": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Decorations Resale Rate"
+          },
+          "decorations_sale_requires_confirmation": {
+            "type": "boolean",
+            "title": "Decorations Sale Requires Confirmation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "requires_confirmation",
+          "hungry_block_at_satiety",
+          "hungry_block_message",
+          "courses_sequential",
+          "start_income",
+          "decorations_resale_rate",
+          "decorations_sale_requires_confirmation"
+        ],
+        "title": "PurchaseRules"
       },
       "QuestsFile": {
         "properties": {
@@ -2675,11 +2927,6 @@
             "minItems": 1,
             "title": "Quick Amounts"
           },
-          "plan_quick_amount": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Plan Quick Amount"
-          },
           "withdraw_amount": {
             "type": "integer",
             "minimum": 1.0,
@@ -2689,49 +2936,26 @@
             "type": "boolean",
             "title": "Withdraw Requires Confirmation"
           },
-          "suggested_per_day": {
+          "eta_average_days": {
             "type": "integer",
             "minimum": 1.0,
-            "title": "Suggested Per Day"
+            "title": "Eta Average Days",
+            "description": "Срок до цели считается по средней сумме пополнения за столько последних дней (ТЗ 2.5.7)"
+          },
+          "deposit": {
+            "$ref": "#/components/schemas/DepositRules"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "quick_amounts",
-          "plan_quick_amount",
           "withdraw_amount",
           "withdraw_requires_confirmation",
-          "suggested_per_day"
+          "eta_average_days",
+          "deposit"
         ],
         "title": "SavingsRules"
-      },
-      "SkinsState": {
-        "properties": {
-          "owned": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Owned",
-            "description": "Купленные образы (навсегда)"
-          },
-          "equipped": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Equipped",
-            "description": "Надетый образ; null — обычный"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "SkinsState"
       },
       "StartState": {
         "properties": {
@@ -2804,6 +3028,33 @@
         ],
         "title": "StoredProgress"
       },
+      "StreakBonus": {
+        "properties": {
+          "days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Days"
+          },
+          "coins": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Coins"
+          },
+          "repeat": {
+            "type": "boolean",
+            "title": "Repeat",
+            "description": "Повторяется каждые `days` дней"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "days",
+          "coins",
+          "repeat"
+        ],
+        "title": "StreakBonus"
+      },
       "StreakRules": {
         "properties": {
           "counts": {
@@ -2817,6 +3068,13 @@
           "coins_bonus": {
             "type": "boolean",
             "title": "Coins Bonus"
+          },
+          "bonuses": {
+            "items": {
+              "$ref": "#/components/schemas/StreakBonus"
+            },
+            "type": "array",
+            "title": "Bonuses"
           }
         },
         "additionalProperties": false,

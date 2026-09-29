@@ -1,7 +1,7 @@
 name: finny_pet
 description: Финни — детский финансовый питомец (7–10+ лет). Онбординг, питомец, бюджет, задания, магазин, копилка.
 publish_to: 'none'
-version: 0.2.0+2
+version: 0.5.0+5
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -30,24 +30,21 @@ flutter:
     - assets/pets/cat_black_small/
     - assets/pets/cat_black_medium/
     - assets/pets/cat_black_large/
+    - assets/pets/dog_ginger_small/
+    - assets/pets/dog_ginger_medium/
+    - assets/pets/dog_ginger_large/
+    - assets/pets/dog_gray_small/
+    - assets/pets/dog_gray_medium/
+    - assets/pets/dog_gray_large/
+    - assets/pets/dog_black_small/
+    - assets/pets/dog_black_medium/
+    - assets/pets/dog_black_large/
+    - assets/pets/raccoon_ginger_small/
+    - assets/pets/raccoon_ginger_medium/
+    - assets/pets/raccoon_ginger_large/
+    - assets/pets/raccoon_gray_small/
+    - assets/pets/raccoon_gray_medium/
+    - assets/pets/raccoon_gray_large/
+    - assets/pets/raccoon_ice_small/
     # Аксессуары поверх питомца (PNG), см. lib/pet/pet_view.dart.
     - assets/accessories/
-    # Анимированные модели питомца (webp). Раскладка — assets/pets/README.md.
-    - assets/pets/cat/v1/
-    - assets/pets/cat/v2/
-    - assets/pets/cat/v3/
-    - assets/pets/cat/cat_astronaut/
-    - assets/pets/cat/cat_princess/
-    - assets/pets/cat/cat_detective/
-    - assets/pets/dog/v1/
-    - assets/pets/dog/v2/
-    - assets/pets/dog/v3/
-    - assets/pets/dog/dog_firefighter/
-    - assets/pets/dog/dog_football/
-    - assets/pets/dog/dog_chef/
-    - assets/pets/penguin/v1/
-    - assets/pets/penguin/v2/
-    - assets/pets/penguin/v3/
-    - assets/pets/penguin/penguin_sailor/
-    - assets/pets/penguin/penguin_scientist/
-    - assets/pets/penguin/penguin_rockstar/

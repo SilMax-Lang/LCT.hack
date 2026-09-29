@@ -76,8 +76,7 @@ def get_manifest(
     responses=NOT_MODIFIED,
     summary="Весь контент одним ответом",
     description=(
-        "Для первого запуска и офлайн-кэша: каталог, цели, задания, "
-        "термины, питомцы, экономика."
+        "Для первого запуска и офлайн-кэша: каталог, цели, задания, " "термины, питомцы, экономика."
     ),
 )
 def get_bundle(
@@ -101,7 +100,9 @@ def get_bundle(
 def get_catalog(
     request: Request,
     response: Response,
-    kind: ItemKind | None = Query(default=None, description="mandatory («надо») | optional"),
+    kind: ItemKind | None = Query(
+        default=None, description="mandatory («надо») | optional («хочу») | education"
+    ),
     category: str | None = Query(default=None, description="food, hygiene, health, toys…"),
     content: ContentLibrary = Depends(get_content),
 ) -> Any:
@@ -237,9 +238,9 @@ def get_glossary(
     "/pets",
     response_model=PetsFile,
     responses=NOT_MODIFIED,
-    summary="Питомец: виды, окраски, образы, этапы, настроение",
+    summary="Питомец: виды, окраски, этапы, эмоции, настроение",
     description=(
-        "Три вида × три окраски = 9 комбинаций (ТЗ 2.6), покупные образы, этапы "
+        "Три вида × три окраски = 9 комбинаций (ТЗ 2.6), перекраска, этапы "
         "взросления по уровню, правила настроения и готовые имена для кубика."
     ),
 )
@@ -258,10 +259,10 @@ def get_pets(
     responses=NOT_MODIFIED,
     summary="Правила игровой экономики",
     description=(
-        "Константы приложения: старт, доход по уровню питомца, бонус за вход, "
-        "опыт и уровни, расход показателей за день, копилка, огонёк, "
-        "обязательные правила. Блок `from_documents` — механики из документов "
-        "команды, которых в приложении пока нет (вклад, курсы, украшения)."
+        "Константы приложения: старт, доход от курсов, бонус за вход, опыт "
+        "(с потолком за день) и уровни, расход показателей за день, вклад, "
+        "огонёк с бонусами, план бюджета, обязательные правила. Блок "
+        "`from_documents` — где приложение сознательно отличается от документов."
     ),
 )
 def get_economy(

@@ -93,7 +93,6 @@ def check_against_content(
     variants = {
         species.id: {variant.id for variant in species.variants} for species in content.pets.species
     }
-    skins = {skin.id: skin.species for skin in content.pets.skins}
 
     def warn(code: str, ref: str, message: str) -> None:
         warnings.append(ContentWarning(code=code, message=message, ref=ref))
@@ -115,14 +114,12 @@ def check_against_content(
         if lesson_id not in lesson_ids:
             warn("unknown_lesson", lesson_id, "Задание отсутствует в справочнике сервера")
 
-    for skin_id in snapshot.skins.owned:
-        if skin_id not in skins:
-            warn("unknown_skin", skin_id, "Образ отсутствует в справочнике сервера")
-
-    equipped = snapshot.skins.equipped
-    if equipped in skins and skins[equipped] != pet.species_id:
-        # Приложение такой образ просто не показывает — питомец в обычной окраске.
-        warn("skin_species_mismatch", equipped, "Надетый образ предназначен другому виду")
+    permanent = {item.id for item in content.catalog.items if item.permanent}
+    for owned_id in snapshot.owned:
+        if owned_id not in item_ids:
+            warn("unknown_item", owned_id, "Покупка отсутствует в каталоге")
+        elif owned_id not in permanent:
+            warn("not_permanent", owned_id, "Этот товар расходуется, он хранится в рюкзачке")
 
     # Дубликаты ref схлопываем: один и тот же id мог встретиться несколько раз.
     unique: dict[tuple[str, str], ContentWarning] = {}

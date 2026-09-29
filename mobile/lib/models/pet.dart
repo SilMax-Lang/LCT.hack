@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Вид питомца: 3 варианта.
-enum PetType { cat, dog, penguin }
+enum PetType { cat, dog, raccoon }
 
 /// Окраска: 3 варианта на каждый вид.
 /// Итого 3 x 3 = 9 комбинаций кастомизации.
@@ -14,8 +14,8 @@ extension PetTypeInfo on PetType {
         return 'Кошечка';
       case PetType.dog:
         return 'Собачка';
-      case PetType.penguin:
-        return 'Пингвинчик';
+      case PetType.raccoon:
+        return 'Енотик';
     }
   }
 
@@ -25,15 +25,44 @@ extension PetTypeInfo on PetType {
         return '🐱';
       case PetType.dog:
         return '🐶';
-      case PetType.penguin:
-        return '🐧';
+      case PetType.raccoon:
+        return '🦝';
     }
   }
 }
 
 /// Настроение питомца: из него берутся мордочка, короткая фраза
 /// и анимация модели. Главное — самое срочное: голод важнее скуки.
-enum PetMood { joyful, calm, hungry, dirty, bored, sad }
+enum PetMood { joyful, calm, hungry, dirty, sad }
+
+/// Эмоция модели — зависит только от счастья:
+/// меньше 33 — грустный, больше 66 — весёлый, между — обычный.
+/// Для каждой эмоции у модели свой ролик и постер.
+enum PetEmotion { sad, normal, happy }
+
+/// Пороги эмоций по счастью.
+const int sadBelow = 33;
+const int happyAbove = 66;
+
+/// Этап взросления — по уровню питомца. У каждого этапа своя модель.
+enum PetStage { baby, teen, adult }
+
+/// С какого уровня питомец — ученик и исследователь.
+const int teenLevel = 12;
+const int adultLevel = 35;
+
+extension PetStageInfo on PetStage {
+  String get title {
+    switch (this) {
+      case PetStage.baby:
+        return 'Малыш 🌱';
+      case PetStage.teen:
+        return 'Ученик 📚';
+      case PetStage.adult:
+        return 'Исследователь 🧭';
+    }
+  }
+}
 
 extension PetMoodInfo on PetMood {
   String get emoji {
@@ -46,8 +75,6 @@ extension PetMoodInfo on PetMood {
         return '😋';
       case PetMood.dirty:
         return '😣';
-      case PetMood.bored:
-        return '🥱';
       case PetMood.sad:
         return '😢';
     }
@@ -64,8 +91,6 @@ extension PetMoodInfo on PetMood {
         return 'Хочу кушать';
       case PetMood.dirty:
         return 'Пора умыться';
-      case PetMood.bored:
-        return 'Поиграем?';
       case PetMood.sad:
         return 'Мне грустно…';
     }
@@ -105,9 +130,9 @@ class PetLook {
         );
       }
       return const PetLook(
-        label: 'Снежок',
-        bgStart: Color(0xFFFFF8E1),
-        bgEnd: Color(0xFFFFECB3),
+        label: 'Ночка',
+        bgStart: Color(0xFFB0B3C6),
+        bgEnd: Color(0xFF5C5F78),
         accent: Color(0xFF8D6E63),
       );
     }
@@ -135,28 +160,28 @@ class PetLook {
         accent: Color(0xFF212121),
       );
     }
-    // Пингвинчик
+    // Енотик
     if (variant == PetVariant.v1) {
       return const PetLook(
-        label: 'Морячок',
-        bgStart: Color(0xFFBBDEFB),
-        bgEnd: Color(0xFF64B5F6),
-        accent: Color(0xFF0D47A1),
+        label: 'Рыжий',
+        bgStart: Color(0xFFFFE0B2),
+        bgEnd: Color(0xFFFFB74D),
+        accent: Color(0xFFE65100),
       );
     }
     if (variant == PetVariant.v2) {
       return const PetLook(
-        label: 'Льдинка',
-        bgStart: Color(0xFFE0F7FA),
-        bgEnd: Color(0xFF80DEEA),
-        accent: Color(0xFF006064),
+        label: 'Серый',
+        bgStart: Color(0xFFE0E0E0),
+        bgEnd: Color(0xFF9E9E9E),
+        accent: Color(0xFF424242),
       );
     }
     return const PetLook(
-      label: 'Пончик',
-      bgStart: Color(0xFFF8BBD0),
-      bgEnd: Color(0xFFF48FB1),
-      accent: Color(0xFFAD1457),
+      label: 'Ледяной',
+      bgStart: Color(0xFFE1F5FE),
+      bgEnd: Color(0xFF81D4FA),
+      accent: Color(0xFF01579B),
     );
   }
 }
@@ -175,7 +200,7 @@ class Pet {
   /// Опыт 0..99 внутри текущего уровня.
   int xp;
 
-  /// Уровень. 1 = Малыш, 2 = Подросток, 3+ = Взрослый.
+  /// Уровень. Этап взросления — см. [stageOf] (12 и 35 — пороги).
   int level;
 
   Pet({
@@ -189,29 +214,58 @@ class Pet {
     required this.level,
   });
 
-  /// Этап взросления по уровню: 1 = Малыш, 2 = Подросток, 3+ = Взрослый.
-  ///
-  /// Статикой — чтобы экран нового уровня мог сравнить «было → стало»
-  /// и показать смену этапа отдельным подарком.
-  static String stageForLevel(int level) {
-    if (level <= 1) return 'Малыш 🌱';
-    if (level == 2) return 'Подросток 🌿';
-    return 'Взрослый 🌳';
+  /// Этап по уровню: до [teenLevel] — малыш, до [adultLevel] — ученик,
+  /// дальше — исследователь.
+  static PetStage stageOf(int level) {
+    if (level < teenLevel) return PetStage.baby;
+    if (level < adultLevel) return PetStage.teen;
+    return PetStage.adult;
   }
+
+  /// Название этапа. Статикой — чтобы экран нового уровня мог сравнить
+  /// «было → стало» и показать смену этапа отдельным подарком.
+  static String stageForLevel(int level) => stageOf(level).title;
 
   /// Этап взросления для главного экрана.
   String get stage => stageForLevel(level);
 
-  /// Текущее настроение. Совсем низкий стат — грусть; низкий — просьба.
+  /// Эмоция модели — только от счастья (см. [sadBelow], [happyAbove]).
+  PetEmotion get emotion {
+    if (happiness < sadBelow) return PetEmotion.sad;
+    if (happiness > happyAbove) return PetEmotion.happy;
+    return PetEmotion.normal;
+  }
+
+  /// Фраза в облачке: сначала срочная просьба (голод, умыться),
+  /// иначе — то же, что показывает модель (грусть, радость, спокойствие).
   PetMood get mood {
-    final minStat = [hunger, happiness, cleanliness]
-        .reduce((a, b) => a < b ? a : b);
-    if (minStat <= 20) return PetMood.sad;
     if (hunger <= 40) return PetMood.hungry;
     if (cleanliness <= 40) return PetMood.dirty;
-    if (happiness <= 40) return PetMood.bored;
-    if (minStat >= 75) return PetMood.joyful;
-    return PetMood.calm;
+    switch (emotion) {
+      case PetEmotion.sad:
+        return PetMood.sad;
+      case PetEmotion.happy:
+        return PetMood.joyful;
+      case PetEmotion.normal:
+        return PetMood.calm;
+    }
+  }
+
+  /// Почему питомец так себя чувствует и что поможет — одной строкой
+  /// под облачком (ТЗ 2.5.10: причина эмоции объясняется ребёнку).
+  String get moodReason {
+    switch (mood) {
+      case PetMood.hungry:
+        return 'Сытость $hunger из 100 — дай еду из рюкзака';
+      case PetMood.dirty:
+        return 'Чистота $cleanliness из 100 — пора помыться';
+      case PetMood.sad:
+        return 'Счастье $happiness из 100 — поможет игрушка';
+      case PetMood.calm:
+        return 'Сыт и чист. Игрушка поднимет настроение';
+      case PetMood.joyful:
+        return 'Сыт, чист и доволен — спасибо за заботу!';
+    }
   }
 
   /// Мордочка настроения (состояние дублируется текстом и эмодзи,

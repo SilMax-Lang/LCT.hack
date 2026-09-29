@@ -6,7 +6,6 @@ import '../../data/shop_data.dart';
 import '../../models/game_state.dart';
 import '../../models/pet.dart';
 import '../../models/player_profile.dart';
-import '../../services/pet_assets.dart';
 import '../../theme/kids_theme.dart';
 import '../../widgets/action_spark.dart';
 import '../../widgets/day_paper.dart';
@@ -14,6 +13,8 @@ import '../../widgets/finny_avatar.dart';
 import '../../widgets/kids_button.dart';
 import '../../widgets/pet_model.dart';
 import '../../widgets/stat_bar.dart';
+import '../diary/diary_screen.dart';
+import '../help/help_screen.dart';
 import '../level_up/level_up_screen.dart';
 import '../quests/quests_screen.dart';
 
@@ -33,7 +34,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   /// Счётчик реакций питомца: каждое действие — прыжок и «огонёк».
   int _reaction = 0;
-  PetAnim _reactionAnim = PetAnim.happy;
+  PetReaction _reactionKind = PetReaction.happy;
 
   @override
   void initState() {
@@ -72,11 +73,11 @@ class _HomeScreenState extends State<HomeScreen> {
     game.claimDailyBonusIfNeeded();
   }
 
-  void _react(PetAnim anim) {
+  void _react(PetReaction kind) {
     if (!mounted) return;
     setState(() {
       _reaction++;
-      _reactionAnim = anim;
+      _reactionKind = kind;
     });
   }
 
@@ -97,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Кормление даёт опыт — питомец мог дорасти до нового уровня.
     await showLevelUpIfNeeded(context);
     if (lastKind != null) {
-      _react(lastKind == ItemKind.food ? PetAnim.eat : PetAnim.happy);
+      _react(lastKind == ItemKind.food ? PetReaction.eat : PetReaction.happy);
     }
   }
 
@@ -106,7 +107,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final summary = GameStateScope.read(context).nextDay();
     if (!mounted) return;
     await showDayPaper(context, summary);
-    _react(PetAnim.sleep);
+    if (!mounted) return;
+    // Опыт за прожитый день мог дорастить питомца до нового уровня.
+    await showLevelUpIfNeeded(context);
+    _react(PetReaction.sleep);
   }
 
   @override
@@ -131,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (game.pendingBonus > 0) ...[
           _BonusBanner(
             amount: game.pendingBonus,
-            petName: pet.name,
+            text: game.pendingBonusText,
             onClose: game.dismissBonus,
           ),
           const SizedBox(height: 12),
@@ -149,8 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            if (age != null)
-              _Chip(text: '👦 ${PlayerProfile.labelFor(age)}'),
+            if (age != null) _Chip(text: '👦 ${PlayerProfile.labelFor(age)}'),
           ],
         ),
         const SizedBox(height: 10),
@@ -169,9 +172,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _PetStage(
           pet: pet,
           mood: mood,
-          skinLevel: pet.level,
           reaction: _reaction,
-          reactionAnim: _reactionAnim,
+          reactionKind: _reactionKind,
           onTap: _openBackpack,
         ),
         const SizedBox(height: 12),
@@ -188,6 +190,32 @@ class _HomeScreenState extends State<HomeScreen> {
           progress: game.goalProgress,
           savings: game.savings,
           target: game.goalTarget,
+        ),
+        const SizedBox(height: 12),
+
+        // Дневник (история, итоги, задания) и подсказка — в любой момент.
+        Row(
+          children: [
+            Expanded(
+              child: _LinkButton(
+                icon: Icons.menu_book_outlined,
+                label: 'Дневник',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const DiaryScreen()),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _LinkButton(
+                icon: Icons.help_outline,
+                label: 'Как играть',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const HelpScreen()),
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
 
@@ -220,8 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             lesson.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           Text(
                             retry
@@ -268,26 +295,22 @@ class _HomeScreenState extends State<HomeScreen> {
 class _PetStage extends StatelessWidget {
   final Pet pet;
   final PetMood mood;
-  final int skinLevel;
   final int reaction;
-  final PetAnim reactionAnim;
+  final PetReaction reactionKind;
   final VoidCallback onTap;
 
   const _PetStage({
     required this.pet,
     required this.mood,
-    required this.skinLevel,
     required this.reaction,
-    required this.reactionAnim,
+    required this.reactionKind,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final game = GameStateScope.of(context);
     final look = PetLook.of(pet.type, pet.variant);
-    final skin = game.skin;
-    final tint = skin?.bgEnd ?? look.bgEnd;
+    final tint = look.bgEnd;
     final scheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -331,6 +354,13 @@ class _PetStage extends StatelessWidget {
               text: '${mood.emoji} ${mood.phrase}',
             ),
           ),
+          const SizedBox(height: 4),
+          // Почему он так себя чувствует и что поможет (ТЗ 2.5.10).
+          Text(
+            pet.moodReason,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: KidsTheme.muted(context)),
+          ),
           Semantics(
             button: true,
             label: 'Питомец ${pet.name}. Открыть рюкзак',
@@ -342,12 +372,13 @@ class _PetStage extends StatelessWidget {
                 child: PetModel(
                   type: pet.type,
                   variant: pet.variant,
-                  skin: skin,
-                  level: skinLevel,
-                  size: 176,
-                  mood: mood,
+                  level: pet.level,
+                  size: 200,
+                  emotion: pet.emotion,
+                  // Живой ролик — только здесь, на главном экране.
+                  animated: true,
                   reaction: reaction,
-                  reactionAnim: reactionAnim,
+                  reactionKind: reactionKind,
                 ),
               ),
             ),
@@ -412,6 +443,31 @@ class _PetStage extends StatelessWidget {
   }
 }
 
+class _LinkButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _LinkButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(48, 52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      onPressed: onTap,
+      icon: Icon(icon),
+      label: Text(label),
+    );
+  }
+}
+
 class _SpeechBubble extends StatelessWidget {
   final String text;
 
@@ -441,12 +497,14 @@ class _SpeechBubble extends StatelessWidget {
 
 class _BonusBanner extends StatelessWidget {
   final int amount;
-  final String petName;
+
+  /// Повод: «Барсик рад тебя видеть!», «Огонёк горит 3 дн. подряд!».
+  final String text;
   final VoidCallback onClose;
 
   const _BonusBanner({
     required this.amount,
-    required this.petName,
+    required this.text,
     required this.onClose,
   });
 
@@ -466,7 +524,7 @@ class _BonusBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              '$petName рад тебя видеть! +$amount 🪙',
+              '$text +$amount 🪙',
               style: const TextStyle(
                 color: Color(0xFF4A2A00),
                 fontWeight: FontWeight.w700,
@@ -585,7 +643,8 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: big ? 10 : 6),
+      padding: EdgeInsets.symmetric(
+          horizontal: big ? 6 : 12, vertical: big ? 10 : 6),
       alignment: big ? Alignment.center : null,
       decoration: BoxDecoration(
         color: KidsTheme.pill(context),

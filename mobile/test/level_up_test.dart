@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finny_pet/app.dart';
+import 'package:finny_pet/data/lessons_data.dart';
+import 'package:finny_pet/data/shop_data.dart';
 import 'package:finny_pet/models/game_state.dart';
 import 'package:finny_pet/models/pet.dart';
 import 'package:finny_pet/screens/level_up/level_up_screen.dart';
@@ -27,32 +29,39 @@ void main() {
     pet.cleanliness = 50;
     final balanceBefore = game.balance;
 
-    // Копилка даёт 5 опыта — ровно добираем до нового уровня.
-    expect(game.deposit(10), isTrue);
+    // Задание даёт 5 опыта — ровно добираем до нового уровня.
+    final lesson = lessonsCatalog.first;
+    expect(game.answerLesson(lesson.id, lesson.correct).correct, isTrue);
 
     expect(pet.level, 2, reason: '100 опыта — это новый уровень');
     expect(pet.xp, 0, reason: 'на новом уровне опыт начинается заново');
     expect(pet.hunger, 100);
     expect(pet.happiness, 100);
     expect(pet.cleanliness, 100);
-    // +25 за уровень и −10, которые ушли в копилку.
-    expect(game.balance, balanceBefore + levelUpCoins - 10);
+    // +25 за уровень и награда за задание.
+    expect(game.balance, balanceBefore + levelUpCoins + lesson.reward);
   });
 
-  test('доход за день растёт вместе с уровнем', () async {
+  test('доход растёт не от уровня, а от курсов', () async {
     final game = await readyGame();
-    final incomeBefore = game.baseIncome;
-    game.pet!.xp = 95;
+    game.balance = 1000;
+    expect(game.baseIncome, 50);
 
-    game.deposit(10);
+    game.devAddXp(300);
+    expect(game.baseIncome, 50, reason: 'уровень доход не меняет');
 
-    expect(game.baseIncome - incomeBefore, 10);
+    final incomes = <int>[];
+    for (final course in courses) {
+      expect(game.buyItem(course.id), BuyResult.ok);
+      incomes.add(game.baseIncome);
+    }
+    expect(incomes, [60, 75, 95, 120]);
   });
 
   test('событие роста показывается один раз', () async {
     final game = await readyGame();
     game.pet!.xp = 95;
-    game.deposit(10);
+    game.devAddXp(5);
 
     final event = game.consumeLevelUp();
     expect(event, isNotNull);
@@ -62,18 +71,36 @@ void main() {
     expect(event.levelsGained, 1);
     expect(event.stageFrom, Pet.stageForLevel(1));
     expect(event.stageTo, Pet.stageForLevel(2));
-    expect(event.stageChanged, isTrue, reason: 'Малыш → Подросток');
-    expect(event.incomeTo - event.incomeFrom, 10);
+    expect(event.stageChanged, isFalse,
+        reason: 'до уровня $teenLevel питомец остаётся малышом');
 
     expect(game.consumeLevelUp(), isNull,
         reason: 'второй раз показывать нечего');
   });
 
+  test('этапы: малыш до $teenLevel, подросток до $adultLevel, дальше взрослый',
+      () async {
+    expect(Pet.stageOf(1), PetStage.baby);
+    expect(Pet.stageOf(teenLevel - 1), PetStage.baby);
+    expect(Pet.stageOf(teenLevel), PetStage.teen);
+    expect(Pet.stageOf(adultLevel - 1), PetStage.teen);
+    expect(Pet.stageOf(adultLevel), PetStage.adult);
+
+    final game = await readyGame();
+    game.pet!.level = teenLevel - 1;
+    game.pet!.xp = 95;
+    game.devAddXp(5);
+    final event = game.consumeLevelUp()!;
+    expect(event.stageChanged, isTrue, reason: 'Малыш → Подросток');
+  });
+
   test('без роста уровня события не появляется', () async {
     final game = await readyGame();
 
-    expect(game.deposit(10), isTrue);
+    expect(game.deposit(10), isTrue, reason: 'копилка опыта не даёт');
+    game.useItem('milk');
 
+    expect(game.pet!.xp, 0);
     expect(game.pet!.level, 1);
     expect(game.consumeLevelUp(), isNull);
   });
@@ -82,8 +109,10 @@ void main() {
       (tester) async {
     await narrow(tester);
     final game = await readyGame();
+    // Граница этапа: экран покажет и новый уровень, и «вырос».
+    game.pet!.level = teenLevel - 1;
     game.pet!.xp = 95;
-    game.deposit(10);
+    game.devAddXp(5);
 
     await tester.pumpWidget(GameStateScope(
       notifier: game,
@@ -106,9 +135,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('НОВЫЙ УРОВЕНЬ!'), findsOneWidget);
-    expect(find.text('Уровень 2'), findsOneWidget);
+    expect(find.text('Уровень $teenLevel'), findsOneWidget);
     expect(find.text('+$levelUpCoins'), findsOneWidget);
-    expect(find.text('Барсик вырос: ${Pet.stageForLevel(2)}'), findsOneWidget);
+    expect(find.text('Барсик вырос: ${Pet.stageForLevel(teenLevel)}'),
+        findsOneWidget);
     expect(find.byType(PetModel), findsOneWidget);
     expect(tester.takeException(), isNull,
         reason: 'экран нового уровня переполнился');
@@ -118,28 +148,27 @@ void main() {
     expect(find.text('НОВЫЙ УРОВЕНЬ!'), findsNothing);
   });
 
-  testWidgets('кормление на границе уровня само открывает экран роста',
+  testWidgets('новый день на границе уровня сам открывает экран роста',
       (tester) async {
     await narrow(tester);
     final game = await readyGame();
-    // Молочко даёт 5 опыта — ровно добираем до нового уровня.
-    game.pet!.xp = 95;
+    // Конец дня: питомец сыт и чист — 1 + 3 = 4 опыта, добираем до уровня.
+    game.pet!.xp = 97;
 
     await tester.pumpWidget(FinnyApp(gameState: game));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.byType(PetModel));
+    await tester.scrollUntilVisible(find.text('Следующий день'), 300,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Следующий день'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(PetModel));
+    await tester.ensureVisible(find.text('Играем дальше!'));
     await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Дать').first);
-    await tester.pump();
-    await tester.tap(find.text('Готово ✅'));
+    await tester.tap(find.text('Играем дальше!'));
     await tester.pumpAndSettle();
 
     expect(find.text('НОВЫЙ УРОВЕНЬ!'), findsOneWidget,
-        reason: 'после кормления должен открыться экран роста');
+        reason: 'после итогов дня должен открыться экран роста');
 
     await tester.tap(find.text('Играем дальше! 🚀'));
     await tester.pumpAndSettle();

@@ -3,14 +3,21 @@ import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../theme/kids_theme.dart';
 import '../../widgets/action_spark.dart';
+import '../../models/game_state.dart';
 import '../level_up/level_up_screen.dart';
 import 'goal_sheet.dart';
 
-/// Сколько монет в день советуем откладывать — для оценки срока цели.
-const int _perDay = 25;
-
-/// Сколько дней ещё копить при [_perDay] монетах в день.
-int daysToGoal(int left) => left <= 0 ? 0 : (left + _perDay - 1) ~/ _perDay;
+/// Срок до цели по средней сумме пополнения (ТЗ 2.5.7): «по N 🪙 в день —
+/// ещё M дн.». Пока средней нет — честно говорим, что срок появится.
+String etaText(GameState game, int left) {
+  if (left <= 0) return 'Цель накоплена!';
+  final days = game.daysToGoal(left);
+  if (days == null) {
+    return 'Отложи монетки — и я посчитаю, сколько дней копить';
+  }
+  return 'В среднем ты откладываешь ${game.avgDeposit} 🪙 в день — '
+      'ещё $days дн.';
+}
 
 /// Копилка: цель, прогресс, пополнение и снятие.
 class BankScreen extends StatefulWidget {
@@ -54,14 +61,18 @@ class _BankScreenState extends State<BankScreen> {
     final game = GameStateScope.read(context);
     final newSavings = game.savings - amount;
     final newLeft = game.goalTarget - newSavings;
+    final daysNow = game.daysToGoal(game.goalLeft);
+    final daysAfter = game.daysToGoal(newLeft);
+    final eta = daysNow == null || daysAfter == null
+        ? 'До цели останется $newLeft 🪙 (было ${game.goalLeft}).'
+        : 'По ${game.avgDeposit} 🪙 в день до цели — ещё $daysAfter дн. '
+            '(было $daysNow).';
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Забрать $amount 🪙?'),
         content: Text(
-          'В копилке станет $newSavings из ${game.goalTarget}.\n'
-          'До цели — ещё ${daysToGoal(newLeft)} дн. '
-          '(было ${daysToGoal(game.goalLeft)}).',
+          'В копилке станет $newSavings из ${game.goalTarget}.\n$eta',
         ),
         actions: [
           TextButton(
@@ -126,12 +137,14 @@ class _BankScreenState extends State<BankScreen> {
                 Text(
                   reached
                       ? 'Накоплено! 🎉'
-                      : '🐷 ${game.savings} из ${game.goalTarget}',
+                      : '🐷 ${game.savings} из ${game.goalTarget} • '
+                          'осталось ${game.goalLeft}',
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 if (!reached)
                   Text(
-                    'По $_perDay 🪙 в день — ещё ${daysToGoal(game.goalLeft)} дн.',
+                    etaText(game, game.goalLeft),
+                    textAlign: TextAlign.center,
                     style: TextStyle(color: KidsTheme.muted(context)),
                   ),
                 TextButton.icon(
@@ -142,6 +155,12 @@ class _BankScreenState extends State<BankScreen> {
               ],
             ),
           ),
+        ),
+        const SizedBox(height: 12),
+        _DepositCard(
+          daysLeft: game.daysToInterest,
+          expected: game.expectedInterest,
+          total: game.interestTotal,
         ),
         const SizedBox(height: 16),
         Row(
@@ -163,7 +182,7 @@ class _BankScreenState extends State<BankScreen> {
         ),
         const SizedBox(height: 8),
         Row(
-          children: [10, 25, 50]
+          children: [10, 20, 50]
               .map(
                 (amount) => Expanded(
                   child: Padding(
@@ -187,6 +206,58 @@ class _BankScreenState extends State<BankScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Вклад: копилка приносит 20 % за игровой год (5 дней), не больше 500
+/// за раз. Видно, когда и сколько добавит банк.
+class _DepositCard extends StatelessWidget {
+  final int daysLeft;
+  final int expected;
+  final int total;
+
+  const _DepositCard({
+    required this.daysLeft,
+    required this.expected,
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: KidsTheme.soft(context),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          const Text('🏦', style: TextStyle(fontSize: 32)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Вклад: +${(depositRate * 100).round()}% каждые '
+                  '$daysPerYear дней',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                Text(
+                  expected > 0
+                      ? 'Через $daysLeft дн. банк добавит +$expected 🪙'
+                      : 'Положи монетки — и банк добавит проценты',
+                ),
+                Text(
+                  'Не больше $interestCap за раз • уже принёс $total 🪙',
+                  style: TextStyle(color: KidsTheme.muted(context)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

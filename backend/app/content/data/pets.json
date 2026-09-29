@@ -1,7 +1,7 @@
 {
   "version": "2.0.0",
   "updated_at": "2026-09-29",
-  "source": "mobile/lib/models/pet.dart, mobile/lib/data/skins_data.dart",
+  "source": "mobile/lib/models/pet.dart",
   "species": [
     {
       "id": "cat",
@@ -24,9 +24,9 @@
         },
         {
           "id": "v3",
-          "title": "Снежок",
-          "bg_start": "#FFF8E1",
-          "bg_end": "#FFECB3",
+          "title": "Ночка",
+          "bg_start": "#B0B3C6",
+          "bg_end": "#5C5F78",
           "accent": "#8D6E63"
         }
       ]
@@ -88,98 +88,7 @@
       ]
     }
   ],
-  "skins": [
-    {
-      "id": "cat_astronaut",
-      "species": "cat",
-      "title": "Космонавт",
-      "emoji": "🚀",
-      "price": 60,
-      "description": "Летим к звёздам!",
-      "bg_start": "#B3C7FF",
-      "bg_end": "#5C6BC0"
-    },
-    {
-      "id": "cat_princess",
-      "species": "cat",
-      "title": "Принцесса",
-      "emoji": "👑",
-      "price": 90,
-      "description": "Настоящая королевская особа.",
-      "bg_start": "#FFD1E8",
-      "bg_end": "#F06292"
-    },
-    {
-      "id": "cat_detective",
-      "species": "cat",
-      "title": "Детектив",
-      "emoji": "🔍",
-      "price": 140,
-      "description": "Найдёт каждую потерянную монетку.",
-      "bg_start": "#D7CCC8",
-      "bg_end": "#8D6E63"
-    },
-    {
-      "id": "dog_firefighter",
-      "species": "dog",
-      "title": "Пожарный",
-      "emoji": "🚒",
-      "price": 60,
-      "description": "Всегда спешит на помощь.",
-      "bg_start": "#FFCDD2",
-      "bg_end": "#E53935"
-    },
-    {
-      "id": "dog_football",
-      "species": "dog",
-      "title": "Футболист",
-      "emoji": "⚽",
-      "price": 90,
-      "description": "Гол! И ещё один!",
-      "bg_start": "#C8E6C9",
-      "bg_end": "#43A047"
-    },
-    {
-      "id": "dog_chef",
-      "species": "dog",
-      "title": "Повар",
-      "emoji": "🍳",
-      "price": 140,
-      "description": "Готовит самый вкусный обед.",
-      "bg_start": "#FFF3C4",
-      "bg_end": "#FFB300"
-    },
-    {
-      "id": "penguin_sailor",
-      "species": "penguin",
-      "title": "Капитан",
-      "emoji": "⚓",
-      "price": 60,
-      "description": "Полный вперёд!",
-      "bg_start": "#B3E5FC",
-      "bg_end": "#0288D1"
-    },
-    {
-      "id": "penguin_scientist",
-      "species": "penguin",
-      "title": "Учёный",
-      "emoji": "🔬",
-      "price": 90,
-      "description": "Изучает, как растут монетки.",
-      "bg_start": "#E1BEE7",
-      "bg_end": "#8E24AA"
-    },
-    {
-      "id": "penguin_rockstar",
-      "species": "penguin",
-      "title": "Рок-звезда",
-      "emoji": "🎸",
-      "price": 140,
-      "description": "Зажигает на сцене!",
-      "bg_start": "#FFE0B2",
-      "bg_end": "#FF7043"
-    }
-  ],
+  "recolor_price": 40,
   "stages": [
     {
       "id": "baby",
@@ -188,27 +97,25 @@
       "min_level": 1
     },
     {
-      "id": "teen",
-      "title": "Подросток",
-      "emoji": "🌿",
-      "min_level": 2
+      "id": "student",
+      "title": "Ученик",
+      "emoji": "📚",
+      "min_level": 12
     },
     {
-      "id": "adult",
-      "title": "Взрослый",
-      "emoji": "🌳",
-      "min_level": 3
+      "id": "explorer",
+      "title": "Исследователь",
+      "emoji": "🧭",
+      "min_level": 35
     }
   ],
+  "emotions": {
+    "stat": "happiness",
+    "sad_below": 33,
+    "happy_above": 66,
+    "explain": "Эмоция модели по счастью: меньше 33 — грустный, больше 66 — весёлый, между — обычный. У каждой свой ролик."
+  },
   "moods": [
-    {
-      "id": "sad",
-      "emoji": "😢",
-      "phrase": "Мне грустно…",
-      "stat": "min",
-      "op": "lte",
-      "value": 20
-    },
     {
       "id": "hungry",
       "emoji": "😋",
@@ -226,20 +133,20 @@
       "value": 40
     },
     {
-      "id": "bored",
-      "emoji": "🥱",
-      "phrase": "Поиграем?",
+      "id": "sad",
+      "emoji": "😢",
+      "phrase": "Мне грустно…",
       "stat": "happiness",
       "op": "lte",
-      "value": 40
+      "value": 32
     },
     {
       "id": "joyful",
       "emoji": "😄",
       "phrase": "Мне так хорошо!",
-      "stat": "min",
+      "stat": "happiness",
       "op": "gte",
-      "value": 75
+      "value": 67
     },
     {
       "id": "calm",

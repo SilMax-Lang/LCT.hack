@@ -7,12 +7,13 @@
     catalog.json ← mobile/lib/data/shop_data.dart
     quests.json  ← mobile/lib/data/lessons_data.dart
     goals.json   ← mobile/lib/data/goals_data.dart
-    pets.json    ← mobile/lib/data/skins_data.dart, names_data.dart, models/pet.dart
+    pets.json    ← mobile/lib/models/pet.dart, data/names_data.dart
     economy.json ← константы mobile/lib/models/game_state.dart (+ блок from_documents)
 
-Значения, которых в коде нет, но которые описаны в документах команды
-(вклад, курсы, бонусы огонька, украшения…), лежат в `FROM_DOCUMENTS` ниже и
-попадают в `economy.json` отдельным блоком `from_documents`.
+Механики из документов команды (курсы, вклад, бонусы огонька, украшения,
+план бюджета) теперь есть в приложении и читаются из кода. В блоке
+`from_documents` остаётся только то, в чём приложение сознательно
+отличается от документов (см. `FROM_DOCUMENTS`).
 
 Запуск из каталога backend/:
 
@@ -213,92 +214,22 @@ def read(relative: str) -> str:
 
 FROM_DOCUMENTS: dict[str, Any] = {
     "note": (
-        "Механики из документов команды (игровая экономика, ТЗ экранов), которых "
-        "в приложении пока нет. Сервер отдаёт их как справочные значения; "
-        "приложение ими не пользуется."
+        "Отличия приложения от документов команды. Всё остальное из документов "
+        "(курсы, вклад, бонусы огонька, украшения, план бюджета, подтверждение "
+        "покупки, блок при голоде) реализовано и описано в основных разделах."
     ),
     "sources": ["Игровая_экономика_Финни_редакция.docx", "ТЗ_Питомец_Финни.docx"],
-    "courses": {
-        "start_income": 50,
-        "sequential": True,
-        "buy_once": True,
-        "items": [
-            {
-                "id": "course_finance_abc",
-                "title": "Азбука финансов",
-                "price": 20,
-                "education_level": 2,
-                "income_after": 60,
-            },
-            {
-                "id": "course_savings_master",
-                "title": "Мастер накоплений",
-                "price": 40,
-                "education_level": 3,
-                "income_after": 75,
-            },
-            {
-                "id": "course_future_deposit",
-                "title": "Вклад в будущее",
-                "price": 80,
-                "education_level": 4,
-                "income_after": 95,
-            },
-            {
-                "id": "course_math_book",
-                "title": "Учебник математики",
-                "price": 160,
-                "education_level": 5,
-                "income_after": 120,
-            },
-        ],
-    },
-    "deposit": {
-        "annual_rate": 0.2,
-        "interest_cap": 500,
-        "accrual": "on_year_change",
-        "quick_amounts": [10, 20, 50],
-        "withdraw_requires_confirmation": True,
-    },
-    "streak_bonuses": [
-        {"days": 3, "coins": 10, "repeat": False},
-        {"days": 7, "coins": 20, "repeat": False},
-        {"days": 7, "coins": 10, "repeat": True},
-    ],
-    "budget_plan": {
-        "step": 5,
-        "alt_step": 10,
-        "directions": ["mandatory", "optional", "education", "savings"],
-        "allow_unallocated": True,
-        "unallocated_hint": (
-            "У тебя осталось {amount} монеток. Может, добавим их в копилку на мечту?"
-        ),
-    },
-    "decorations": {
-        "total": 20,
-        "rarities": [
-            {"id": "common", "title": "Обычные", "count": 10, "min_price": 10, "max_price": 30},
-            {"id": "rare", "title": "Редкие", "count": 6, "min_price": 40, "max_price": 80},
-            {"id": "epic", "title": "Эпические", "count": 4, "min_price": 100, "max_price": 200},
-        ],
-        "resale_rate": 0.7,
-        "sale_requires_confirmation": True,
-    },
-    "functional_items": [
-        {"id": "bowl", "title": "Миска", "price": 5},
-        {"id": "drinker", "title": "Поилка", "price": 15},
-        {"id": "bed", "title": "Лежанка", "price": 50},
-    ],
-    "purchase_block": {
-        "when_stat": "satiety",
-        "lte": 40,
-        "blocked": ["toys", "education"],
-        "message": "{pet_name} слишком голоден, чтобы играть или учиться! Сначала накорми его.",
-    },
-    "xp_stages": [
-        {"id": "baby", "title": "Малыш", "min_xp": 0},
-        {"id": "student", "title": "Ученик", "min_xp": 100},
-        {"id": "explorer", "title": "Исследователь", "min_xp": 200},
+    "differences": [
+        {
+            "topic": "stages",
+            "documents": "Малыш / Ученик / Исследователь по опыту: 0, 100, 200 XP",
+            "app": "те же названия, этап по уровню питомца: 1–11, 12–34, 35+",
+        },
+        {
+            "topic": "deposit_year",
+            "documents": "проценты по вкладу при смене года",
+            "app": "игровой год — 5 дней, чтобы проценты было видно в демо-режиме",
+        },
     ],
 }
 
@@ -312,10 +243,14 @@ CATEGORY_IDS = {
     "food": "food",
     "hygiene": "hygiene",
     "health": "health",
-    "fun": "toys",
-    "clothes": "clothes",
     "home": "home",
+    "fun": "toys",
+    "education": "education",
+    "decor": "decorations",
 }
+
+# Корзины бюджета по отделу (как BudgetBasket в приложении).
+BASKETS = {"mandatory": "mandatory", "education": "education"}
 
 # У готовых целей в приложении нет id — даём стабильные по названию.
 GOAL_IDS = {
@@ -327,7 +262,7 @@ GOAL_IDS = {
     "Подарок маме": "goal_gift_mom",
 }
 
-STAGE_IDS = {"Малыш": "baby", "Подросток": "teen", "Взрослый": "adult"}
+STAGE_IDS = {"Малыш": "baby", "Ученик": "student", "Исследователь": "explorer"}
 
 
 def _header(source: str) -> dict[str, Any]:
@@ -338,45 +273,64 @@ def _header(source: str) -> dict[str, Any]:
     }
 
 
+def _kinds_where(src: str, getter: str) -> set[str]:
+    """ItemKind, перечисленные в геттере `bool get <getter> => this == ItemKind.x || …`."""
+    body = re.search(rf"bool get {getter} =>(.*?);", src, re.S).group(1)
+    return set(re.findall(r"ItemKind\.(\w+)", body))
+
+
 def build_catalog() -> dict[str, Any]:
     src = read("data/shop_data.dart")
     kinds = enum_values(src, "ItemKind")
     titles = switch_getter(src, "ItemKind", "title")
     emojis = switch_getter(src, "ItemKind", "emoji")
-    mandatory = set(re.findall(r"this == ItemKind\.(\w+)", src))
-    default_xp = dart_int(src, r"this\.xp\s*=\s*(\d+)")
+    mandatory = _kinds_where(src, "mandatory")
+    permanent = _kinds_where(src, "permanent")
+    hungry_blocked = _kinds_where(src, "blockedWhenHungry")
+    resale = float(re.search(r"const double resaleRate = ([\d.]+);", src).group(1))
+
+    def basket(kind: str) -> str:
+        if kind in mandatory:
+            return "mandatory"
+        return "education" if kind == "education" else "optional"
 
     categories = [
         {
             "id": CATEGORY_IDS[kind],
             "title": titles[kind],
             "emoji": emojis[kind],
-            "kind": "mandatory" if kind in mandatory else "optional",
+            "kind": basket(kind),
+            "permanent": kind in permanent,
+            "blocked_when_hungry": kind in hungry_blocked,
         }
         for kind in kinds
     ]
     items = []
     for item in dart_const(src, "shopCatalog"):
         kind = item["kind"].split(".")[-1]
+        rarity = item.get("rarity")
         items.append(
             {
                 "id": item["id"],
                 "title": item["title"],
                 "category": CATEGORY_IDS[kind],
-                "kind": "mandatory" if kind in mandatory else "optional",
+                "kind": basket(kind),
                 "price": item["price"],
                 "emoji": item["emoji"],
                 "effects": {
                     "satiety": item.get("hunger", 0),
                     "happiness": item.get("happiness", 0),
                     "cleanliness": item.get("cleanliness", 0),
-                    "xp": item.get("xp", default_xp),
                 },
                 "effect_text": item["effectText"],
                 "badge": item.get("badge"),
+                "permanent": kind in permanent,
+                "rarity": rarity.split(".")[-1] if rarity else None,
+                "income_after": item.get("incomeAfter"),
+                "resale_price": round(item["price"] * resale) if kind == "decor" else None,
             }
         )
-    deal = re.search(r"\(day \* (\d+) \+ (\d+)\) % shopCatalog\.length", src)
+    deal = re.search(r"pool\[\(day \* (\d+) \+ (\d+)\) % pool\.length\]", src)
     return {
         **_header("mobile/lib/data/shop_data.dart"),
         "categories": categories,
@@ -386,7 +340,21 @@ def build_catalog() -> dict[str, Any]:
             "day_multiplier": int(deal.group(1)),
             "day_offset": int(deal.group(2)),
             "min_price": dart_int(src, r"return price < (\d+) \?"),
-            "explain": "Товар дня — items[(day × 7 + 3) mod число товаров], цена со скидкой.",
+            "explain": (
+                "Товар дня — только из расходуемых (без вещей навсегда): "
+                "pool[(day × 7 + 3) mod размер], цена со скидкой."
+            ),
+        },
+        "purchase_rules": {
+            "requires_confirmation": True,
+            "hungry_block_at_satiety": dart_int(src, r"const int hungryBlockAt = (\d+);"),
+            "hungry_block_message": (
+                "{pet_name} слишком голоден, чтобы играть или учиться! Сначала накорми его."
+            ),
+            "courses_sequential": True,
+            "start_income": dart_int(src, r"const int startIncome = (\d+);"),
+            "decorations_resale_rate": resale,
+            "decorations_sale_requires_confirmation": True,
         },
     }
 
@@ -429,7 +397,11 @@ def build_quests() -> dict[str, Any]:
     reward = re.search(r"rewardForGrade\(int grade\) => (\d+) \+ grade \* (\d+);", src)
     base, per_grade = int(reward.group(1)), int(reward.group(2))
     xp = dart_int(src, r"const int lessonXp = (\d+);")
-    age_offset = dart_int(src, r"final grade = age - (\d+);")
+    age_offset = dart_int(src, r"return \(age - (\d+)\)\.clamp")
+    per_day = dart_int(src, r"const int rewardedLessonsPerDay = (\d+);")
+
+    def finance_grade(cls: int) -> int:
+        return 1 if cls <= 2 else cls - 1
 
     # Названия разделов — из switch в sectionTitle:
     # финансы 1/2/остальные, математика 1/2/3/остальные.
@@ -467,12 +439,20 @@ def build_quests() -> dict[str, Any]:
             "reward_per_grade": per_grade,
             "xp_per_lesson": xp,
             "reward_only_first_solve": True,
+            "rewarded_lessons_per_day": per_day,
             "mistake_goes_to_retry": True,
             "mistake_penalty": 0,
-            "age_to_grade": [{"age": age, "grade": age - age_offset} for age in (7, 8, 9, 10)],
+            "age_to_grade": [
+                {
+                    "age": age,
+                    "grade": age - age_offset,
+                    "finance_level": finance_grade(age - age_offset),
+                }
+                for age in (7, 8, 9, 10)
+            ],
             "age_to_grade_explain": (
-                "Рекомендованный класс = возраст − 6 (10 — это «10+»). Если на дороге "
-                "нет такого класса, берётся последний: у финансов это 3 класс."
+                "Класс = возраст − 6 (10 — это «10+»): математика 1–4 класс. У финансов "
+                "три уровня: 1–2 класс — 1 уровень, 3 класс — 2-й, 4 класс — 3-й."
             ),
         },
         "items": [
@@ -505,7 +485,6 @@ def _pet_looks(src: str) -> list[dict[str, Any]]:
 
 def build_pets() -> dict[str, Any]:
     pet_src = read("models/pet.dart")
-    skins_src = read("data/skins_data.dart")
     names_src = read("data/names_data.dart")
     nickname_src = read("screens/onboarding/nickname_screen.dart")
 
@@ -535,63 +514,59 @@ def build_pets() -> dict[str, Any]:
             }
         )
 
-    stage_src = re.search(r"static String stageForLevel\(int level\) \{(.*?)\n  \}", pet_src, re.S)
-    stages = re.findall(r"return '(\S+) (\S+)';", stage_src.group(1))
-    stage_levels = [1, 2, 3]  # level <= 1, level == 2, иначе (3+)
+    stage_titles = switch_getter(pet_src, "PetStage", "title")
+    stages = [stage_titles[stage].split(" ", 1) for stage in enum_values(pet_src, "PetStage")]
+    stage_levels = [
+        1,
+        dart_int(pet_src, r"const int teenLevel = (\d+);"),
+        dart_int(pet_src, r"const int adultLevel = (\d+);"),
+    ]
+    sad_below = dart_int(pet_src, r"const int sadBelow = (\d+);")
+    happy_above = dart_int(pet_src, r"const int happyAbove = (\d+);")
 
     mood_emoji = switch_getter(pet_src, "PetMood", "emoji")
     mood_phrase = switch_getter(pet_src, "PetMood", "phrase")
     mood_body = re.search(r"PetMood get mood \{(.*?)\n  \}", pet_src, re.S).group(1)
-    conditions = re.findall(r"if \((\w+) ([<>]=) (\d+)\) return PetMood\.(\w+);", mood_body)
-    stat_ids = {
-        "minStat": "min",
-        "hunger": "satiety",
-        "happiness": "happiness",
-        "cleanliness": "cleanliness",
-    }
-    moods = [
-        {
-            "id": mood,
-            "emoji": mood_emoji[mood],
-            "phrase": mood_phrase[mood],
-            "stat": stat_ids[stat],
-            "op": "lte" if op == "<=" else "gte",
-            "value": int(value),
+    urgent = re.findall(r"if \((\w+) <= (\d+)\) return PetMood\.(\w+);", mood_body)
+    stat_ids = {"hunger": "satiety", "cleanliness": "cleanliness"}
+
+    def mood(mood_id: str, stat: str | None, op: str | None, value: int | None) -> dict:
+        return {
+            "id": mood_id,
+            "emoji": mood_emoji[mood_id],
+            "phrase": mood_phrase[mood_id],
+            "stat": stat,
+            "op": op,
+            "value": value,
         }
-        for stat, op, value, mood in conditions
+
+    # Сначала срочное (голод, умыться), потом эмоция по счастью, в конце — запасное.
+    moods = [mood(m, stat_ids[stat], "lte", int(v)) for stat, v, m in urgent]
+    moods += [
+        mood("sad", "happiness", "lte", sad_below - 1),
+        mood("joyful", "happiness", "gte", happy_above + 1),
+        mood("calm", None, None, None),
     ]
-    fallback = re.search(r"return PetMood\.(\w+);\s*$", mood_body).group(1)
-    moods.append(
-        {
-            "id": fallback,
-            "emoji": mood_emoji[fallback],
-            "phrase": mood_phrase[fallback],
-            "stat": None,
-            "op": None,
-            "value": None,
-        }
-    )
 
     return {
-        **_header("mobile/lib/models/pet.dart, mobile/lib/data/skins_data.dart"),
+        **_header("mobile/lib/models/pet.dart"),
         "species": species_list,
-        "skins": [
-            {
-                "id": skin["id"],
-                "species": skin["type"].split(".")[-1],
-                "title": skin["title"],
-                "emoji": skin["emoji"],
-                "price": skin["price"],
-                "description": skin["description"],
-                "bg_start": color(skin["bgStart"]),
-                "bg_end": color(skin["bgEnd"]),
-            }
-            for skin in dart_const(skins_src, "skinsCatalog")
-        ],
+        "recolor_price": dart_int(
+            read("models/game_state.dart"), r"const int recolorPrice = (\d+);"
+        ),
         "stages": [
             {"id": STAGE_IDS[title], "title": title, "emoji": emoji, "min_level": level}
             for (title, emoji), level in zip(stages, stage_levels, strict=True)
         ],
+        "emotions": {
+            "stat": "happiness",
+            "sad_below": sad_below,
+            "happy_above": happy_above,
+            "explain": (
+                f"Эмоция модели по счастью: меньше {sad_below} — грустный, больше "
+                f"{happy_above} — весёлый, между — обычный. У каждой свой ролик."
+            ),
+        },
         "moods": moods,
         "name_suggestions": dart_const(names_src, "dicePetNames"),
         "nickname_rules": {
@@ -607,18 +582,30 @@ def build_pets() -> dict[str, Any]:
 def build_economy() -> dict[str, Any]:
     src = read("models/game_state.dart")
     shop = read("data/shop_data.dart")
+    lessons = read("data/lessons_data.dart")
     bank = read("screens/bank/bank_screen.dart")
-    plan = read("screens/plan/plan_screen.dart")
     profile = read("models/player_profile.dart")
 
-    income = re.search(r"incomeForLevel\(int level\) => (\d+) \+ level \* (\d+);", src)
-    base, per_level = int(income.group(1)), int(income.group(2))
     inventory = re.search(r"Map<String, int> inventory = \{([^}]*)\}", src).group(1)
     start_inventory = [
         {"item_id": item_id, "quantity": int(qty)}
         for item_id, qty in re.findall(r"'(\w+)': (\d+)", inventory)
     ]
     quick = re.search(r"children: \[([\d, ]+)\]\s*\.map", bank).group(1)
+    start_income = dart_int(shop, r"const int startIncome = (\d+);")
+    courses = [
+        {
+            "course_id": item["id"],
+            "title": item["title"],
+            "price": item["price"],
+            "income_after": item["incomeAfter"],
+        }
+        for item in dart_const(shop, "shopCatalog")
+        if item["kind"].endswith("education")
+    ]
+    streak_body = re.search(r"int streakBonusFor\(int streak\) \{(.*?)\n\}", src, re.S).group(1)
+    streak_fixed = re.findall(r"if \(streak == (\d+)\) return (\d+);", streak_body)
+    streak_repeat = re.search(r"streak % (\d+) == 0\) return (\d+);", streak_body)
 
     return {
         **_header("mobile/lib/models/game_state.dart"),
@@ -631,18 +618,20 @@ def build_economy() -> dict[str, Any]:
             "day": 1,
         },
         "income": {
-            "depends_on": "pet_level",
-            "base": base,
-            "per_level": per_level,
-            "explain": f"Доход за день = {base} + уровень питомца × {per_level}.",
-            "table": [
-                {"level": level, "income": base + level * per_level} for level in range(1, 6)
-            ],
+            "depends_on": "courses",
+            "base": start_income,
+            "explain": (
+                f"Доход за день — {start_income} монет; каждый пройденный курс "
+                "(магазин → «Обучение», по порядку) поднимает его."
+            ),
+            "table": [{"courses": 0, "income": start_income}]
+            + [{"courses": i + 1, "income": c["income_after"]} for i, c in enumerate(courses)],
+            "courses": courses,
             "sources": [
                 {
                     "id": "day_income",
                     "title": "Доход за день",
-                    "explain": "Начисляется кнопкой «Новый день», растёт с уровнем питомца.",
+                    "explain": "Начисляется кнопкой «Новый день», растёт с курсами.",
                 },
                 {
                     "id": "daily_bonus",
@@ -652,12 +641,27 @@ def build_economy() -> dict[str, Any]:
                 {
                     "id": "lesson_reward",
                     "title": "Награда за задание",
-                    "explain": "Только за первое верное решение, 5 + класс × 10 монет.",
+                    "explain": "Первое верное решение, 10–25 монет, не больше 2 заданий в день.",
                 },
                 {
                     "id": "level_up",
                     "title": "Новый уровень питомца",
                     "explain": "Монетки за каждый новый уровень.",
+                },
+                {
+                    "id": "streak_bonus",
+                    "title": "Бонус огонька",
+                    "explain": "3 и 7 дней подряд с действием, дальше каждые 7 дней.",
+                },
+                {
+                    "id": "deposit_interest",
+                    "title": "Проценты по вкладу",
+                    "explain": "20 % копилки раз в игровой год (5 дней), не больше 500.",
+                },
+                {
+                    "id": "decoration_sale",
+                    "title": "Продажа украшения",
+                    "explain": "Магазин выкупает украшение за 70 % цены.",
                 },
                 {
                     "id": "savings_withdraw",
@@ -678,20 +682,18 @@ def build_economy() -> dict[str, Any]:
         "xp_rules": [
             {
                 "id": "lesson_solved",
-                "xp": dart_int(read("data/lessons_data.dart"), r"const int lessonXp = (\d+);"),
+                "xp": dart_int(lessons, r"const int lessonXp = (\d+);"),
                 "explain": "Первое верное решение задания.",
             },
             {
-                "id": "savings_deposit",
-                "xp": dart_int(src, r"savings \+= amount;\s*_addXp\((\d+)\)"),
-                "explain": "Каждое пополнение копилки.",
-            },
-            {
-                "id": "item_used",
-                "xp": dart_int(shop, r"this\.xp\s*=\s*(\d+)"),
-                "explain": "Использование предмета; у части товаров больше — см. effects.xp.",
+                "id": "day_end",
+                "xp": dart_int(src, r"const int endOfDayXp = (\d+);"),
+                "explain": "Конец дня, до 10: 1 + по 3 за каждое решение дня — "
+                "питомец сыт и чист (сытость и чистота больше 40), план "
+                "подтверждён и выполнен, в копилку отложено.",
             },
         ],
+        "xp_per_day_max": dart_int(src, r"const int maxXpPerDay = (\d+);"),
         "stats": [
             {
                 "id": "satiety",
@@ -707,7 +709,7 @@ def build_economy() -> dict[str, Any]:
                 "emoji": "😊",
                 "max": 100,
                 "decay_per_day": dart_int(src, r"const int dayHappinessCost = (\d+);"),
-                "low_threshold": 40,
+                "low_threshold": 33,
             },
             {
                 "id": "cleanliness",
@@ -726,16 +728,43 @@ def build_economy() -> dict[str, Any]:
         },
         "savings": {
             "quick_amounts": [int(x) for x in quick.split(",")],
-            "plan_quick_amount": dart_int(plan, r"deposit\((\d+)\)"),
             "withdraw_amount": dart_int(bank, r"_withdraw\((\d+)\)"),
             "withdraw_requires_confirmation": True,
-            "suggested_per_day": dart_int(bank, r"const int _perDay = (\d+);"),
+            "eta_average_days": dart_int(src, r"const int savingsAverageDays = (\d+);"),
+            "deposit": {
+                "rate_per_year": float(
+                    re.search(r"const double depositRate = ([\d.]+);", src).group(1)
+                ),
+                "days_per_year": dart_int(src, r"const int daysPerYear = (\d+);"),
+                "interest_cap": dart_int(src, r"const int interestCap = (\d+);"),
+            },
         },
         "streak": {
             "counts": "Дни подряд, в которые было хотя бы одно действие: "
             "кормление, покупка, копилка или задание.",
             "resets_after_missed_day": True,
-            "coins_bonus": False,
+            "coins_bonus": True,
+            "bonuses": [{"days": int(d), "coins": int(c), "repeat": False} for d, c in streak_fixed]
+            + [
+                {
+                    "days": int(streak_repeat.group(1)),
+                    "coins": int(streak_repeat.group(2)),
+                    "repeat": True,
+                }
+            ],
+        },
+        "budget_plan": {
+            "baskets": enum_values(shop, "BudgetBasket"),
+            "steps": [
+                dart_int(src, r"const int planStepSmall = (\d+);"),
+                dart_int(src, r"const int planStepBig = (\d+);"),
+            ],
+            "confirm_locks_plan": True,
+            "shows_plan_vs_fact": True,
+            "new_plan_each_day": True,
+            "unallocated_hint": (
+                "У тебя осталось {amount} монеток. Может, добавим их в копилку на мечту?"
+            ),
         },
         "player": {
             "min_age": dart_int(profile, r"static const int minAge = (\d+);"),
@@ -744,7 +773,7 @@ def build_economy() -> dict[str, Any]:
         },
         "rules": {
             "negative_balance_forbidden": True,
-            "purchase_requires_confirmation": False,
+            "purchase_requires_confirmation": True,
             "savings_withdraw_requires_confirmation": True,
             "quests_reward_coins": True,
             "mistake_creates_retry_task": True,

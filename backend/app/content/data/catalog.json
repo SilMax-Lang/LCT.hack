@@ -7,37 +7,57 @@
       "id": "food",
       "title": "Еда",
       "emoji": "🍎",
-      "kind": "mandatory"
+      "kind": "mandatory",
+      "permanent": false,
+      "blocked_when_hungry": false
     },
     {
       "id": "hygiene",
       "title": "Уход",
       "emoji": "🧼",
-      "kind": "mandatory"
+      "kind": "mandatory",
+      "permanent": false,
+      "blocked_when_hungry": false
     },
     {
       "id": "health",
       "title": "Здоровье",
       "emoji": "💊",
-      "kind": "mandatory"
-    },
-    {
-      "id": "toys",
-      "title": "Игры",
-      "emoji": "⚽",
-      "kind": "optional"
-    },
-    {
-      "id": "clothes",
-      "title": "Наряды",
-      "emoji": "🎀",
-      "kind": "optional"
+      "kind": "mandatory",
+      "permanent": false,
+      "blocked_when_hungry": false
     },
     {
       "id": "home",
-      "title": "Уют",
-      "emoji": "🛏️",
-      "kind": "optional"
+      "title": "Для дома",
+      "emoji": "🏠",
+      "kind": "mandatory",
+      "permanent": true,
+      "blocked_when_hungry": false
+    },
+    {
+      "id": "toys",
+      "title": "Игрушки",
+      "emoji": "⚽",
+      "kind": "optional",
+      "permanent": false,
+      "blocked_when_hungry": true
+    },
+    {
+      "id": "education",
+      "title": "Обучение",
+      "emoji": "📚",
+      "kind": "education",
+      "permanent": true,
+      "blocked_when_hungry": true
+    },
+    {
+      "id": "decorations",
+      "title": "Украшения",
+      "emoji": "✨",
+      "kind": "optional",
+      "permanent": true,
+      "blocked_when_hungry": false
     }
   ],
   "items": [
@@ -51,27 +71,33 @@
       "effects": {
         "satiety": 20,
         "happiness": 0,
-        "cleanliness": 0,
-        "xp": 5
+        "cleanliness": 0
       },
       "effect_text": "Вкусно! +20 к сытости 🥛",
-      "badge": null
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "apple",
       "title": "Яблочко",
       "category": "food",
       "kind": "mandatory",
-      "price": 8,
+      "price": 5,
       "emoji": "🍎",
       "effects": {
         "satiety": 15,
-        "happiness": 5,
-        "cleanliness": 0,
-        "xp": 5
+        "happiness": 0,
+        "cleanliness": 0
       },
       "effect_text": "Хрум-хрум! +15 к сытости 🍎",
-      "badge": null
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "carrot",
@@ -83,27 +109,33 @@
       "effects": {
         "satiety": 10,
         "happiness": 0,
-        "cleanliness": 0,
-        "xp": 5
+        "cleanliness": 0
       },
       "effect_text": "Полезно и дёшево! +10 к сытости 🥕",
-      "badge": null
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "cookie",
-      "title": "Печенька",
+      "title": "Лакомство",
       "category": "food",
       "kind": "mandatory",
-      "price": 15,
+      "price": 20,
       "emoji": "🍪",
       "effects": {
         "satiety": 25,
-        "happiness": 10,
-        "cleanliness": 0,
-        "xp": 5
+        "happiness": 15,
+        "cleanliness": 0
       },
-      "effect_text": "Ням! +25 к сытости 🍪",
-      "badge": "Хит"
+      "effect_text": "Ням! +25 к сытости и +15 к счастью 🍪",
+      "badge": "Хит",
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "fish",
@@ -114,12 +146,15 @@
       "emoji": "🐟",
       "effects": {
         "satiety": 30,
-        "happiness": 5,
-        "cleanliness": 0,
-        "xp": 5
+        "happiness": 0,
+        "cleanliness": 0
       },
       "effect_text": "Свежая рыбка! +30 к сытости 🐟",
-      "badge": null
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "dinner",
@@ -131,59 +166,71 @@
       "effects": {
         "satiety": 50,
         "happiness": 0,
-        "cleanliness": 0,
-        "xp": 5
+        "cleanliness": 0
       },
       "effect_text": "Сытно! +50 к сытости 🍲",
-      "badge": "Выгодно"
+      "badge": "Выгодно",
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "soap",
       "title": "Мыло",
       "category": "hygiene",
       "kind": "mandatory",
-      "price": 12,
+      "price": 10,
       "emoji": "🧼",
       "effects": {
         "satiety": 0,
         "happiness": 0,
-        "cleanliness": 25,
-        "xp": 5
+        "cleanliness": 30
       },
-      "effect_text": "Чистота! +25 к чистоте 🧼",
-      "badge": null
+      "effect_text": "Чистота! +30 к чистоте 🧼",
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "shower",
       "title": "Тёплый душ",
       "category": "hygiene",
       "kind": "mandatory",
-      "price": 18,
+      "price": 15,
       "emoji": "🚿",
       "effects": {
         "satiety": 0,
         "happiness": 0,
-        "cleanliness": 35,
-        "xp": 5
+        "cleanliness": 40
       },
-      "effect_text": "Свежесть! +35 к чистоте 🚿",
-      "badge": null
+      "effect_text": "Свежесть! +40 к чистоте 🚿",
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "bath",
       "title": "Ванна с пеной",
       "category": "hygiene",
       "kind": "mandatory",
-      "price": 28,
+      "price": 20,
       "emoji": "🛁",
       "effects": {
         "satiety": 0,
-        "happiness": 5,
-        "cleanliness": 55,
-        "xp": 5
+        "happiness": 0,
+        "cleanliness": 50
       },
-      "effect_text": "Пузырьки! +55 к чистоте 🛁",
-      "badge": null
+      "effect_text": "Пузырьки! +50 к чистоте 🛁",
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "vitamins",
@@ -194,12 +241,15 @@
       "emoji": "💊",
       "effects": {
         "satiety": 10,
-        "happiness": 5,
-        "cleanliness": 0,
-        "xp": 10
+        "happiness": 10,
+        "cleanliness": 0
       },
-      "effect_text": "Бодрость! +10 к сытости и +10 опыта 💊",
-      "badge": null
+      "effect_text": "Бодрость! +10 к сытости и счастью 💊",
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "tea",
@@ -211,11 +261,14 @@
       "effects": {
         "satiety": 5,
         "happiness": 10,
-        "cleanliness": 0,
-        "xp": 5
+        "cleanliness": 0
       },
       "effect_text": "Уютно! +10 к счастью 🍵",
-      "badge": null
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "vet",
@@ -227,235 +280,622 @@
       "effects": {
         "satiety": 20,
         "happiness": 20,
-        "cleanliness": 20,
-        "xp": 15
+        "cleanliness": 20
       },
-      "effect_text": "Здоров! +20 ко всему и +15 опыта 🏥",
-      "badge": null
+      "effect_text": "Здоров! +20 ко всему 🏥",
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
+    },
+    {
+      "id": "bowl",
+      "title": "Миска",
+      "category": "home",
+      "kind": "mandatory",
+      "price": 5,
+      "emoji": "🥣",
+      "effects": {
+        "satiety": 0,
+        "happiness": 5,
+        "cleanliness": 0
+      },
+      "effect_text": "Теперь есть из чего кушать!",
+      "badge": null,
+      "permanent": true,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
+    },
+    {
+      "id": "drinker",
+      "title": "Поилка",
+      "category": "home",
+      "kind": "mandatory",
+      "price": 15,
+      "emoji": "🚰",
+      "effects": {
+        "satiety": 0,
+        "happiness": 5,
+        "cleanliness": 0
+      },
+      "effect_text": "Свежая вода всегда рядом!",
+      "badge": null,
+      "permanent": true,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
+    },
+    {
+      "id": "bed",
+      "title": "Лежанка",
+      "category": "home",
+      "kind": "mandatory",
+      "price": 50,
+      "emoji": "🛏️",
+      "effects": {
+        "satiety": 0,
+        "happiness": 15,
+        "cleanliness": 0
+      },
+      "effect_text": "Сладкий сон на своём месте!",
+      "badge": null,
+      "permanent": true,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "ball",
       "title": "Мячик",
       "category": "toys",
       "kind": "optional",
-      "price": 20,
+      "price": 15,
       "emoji": "⚽",
       "effects": {
         "satiety": 0,
-        "happiness": 25,
-        "cleanliness": 0,
-        "xp": 5
+        "happiness": 20,
+        "cleanliness": 0
       },
-      "effect_text": "Весело! +25 к счастью ⚽",
-      "badge": null
+      "effect_text": "Весело! +20 к счастью ⚽",
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "balloon",
       "title": "Воздушный шарик",
       "category": "toys",
       "kind": "optional",
-      "price": 12,
+      "price": 10,
       "emoji": "🎈",
       "effects": {
         "satiety": 0,
         "happiness": 15,
-        "cleanliness": 0,
-        "xp": 5
+        "cleanliness": 0
       },
       "effect_text": "Летит! +15 к счастью 🎈",
-      "badge": null
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "paints",
       "title": "Краски",
       "category": "toys",
       "kind": "optional",
-      "price": 25,
+      "price": 20,
       "emoji": "🎨",
       "effects": {
         "satiety": 0,
         "happiness": 25,
-        "cleanliness": 0,
-        "xp": 10
+        "cleanliness": 0
       },
-      "effect_text": "Шедевр! +25 к счастью и +10 опыта 🎨",
-      "badge": null
+      "effect_text": "Шедевр! +25 к счастью 🎨",
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "teddy",
       "title": "Плюшевый мишка",
       "category": "toys",
       "kind": "optional",
-      "price": 40,
+      "price": 30,
       "emoji": "🧸",
       "effects": {
         "satiety": 0,
-        "happiness": 40,
-        "cleanliness": 0,
-        "xp": 10
+        "happiness": 35,
+        "cleanliness": 0
       },
-      "effect_text": "Обнимашки! +40 к счастью 🧸",
-      "badge": null
+      "effect_text": "Обнимашки! +35 к счастью 🧸",
+      "badge": null,
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
       "id": "board_game",
       "title": "Настольная игра",
       "category": "toys",
       "kind": "optional",
-      "price": 35,
+      "price": 50,
       "emoji": "🎲",
       "effects": {
         "satiety": 0,
-        "happiness": 35,
-        "cleanliness": 0,
-        "xp": 10
+        "happiness": 50,
+        "cleanliness": 0
       },
-      "effect_text": "Твой ход! +35 к счастью 🎲",
-      "badge": "Новинка"
+      "effect_text": "Твой ход! +50 к счастью 🎲",
+      "badge": "Новинка",
+      "permanent": false,
+      "rarity": null,
+      "income_after": null,
+      "resale_price": null
     },
     {
-      "id": "console",
-      "title": "Игровая приставка",
-      "category": "toys",
-      "kind": "optional",
-      "price": 90,
-      "emoji": "🎮",
+      "id": "course_abc",
+      "title": "Азбука финансов",
+      "category": "education",
+      "kind": "education",
+      "price": 20,
+      "emoji": "📘",
       "effects": {
         "satiety": 0,
-        "happiness": 60,
-        "cleanliness": 0,
-        "xp": 20
+        "happiness": 0,
+        "cleanliness": 0
       },
-      "effect_text": "Играем! +60 к счастью 🎮",
-      "badge": null
+      "effect_text": "Доход за день: 60 🪙",
+      "badge": null,
+      "permanent": true,
+      "rarity": null,
+      "income_after": 60,
+      "resale_price": null
     },
     {
-      "id": "bow",
+      "id": "course_saver",
+      "title": "Мастер накоплений",
+      "category": "education",
+      "kind": "education",
+      "price": 40,
+      "emoji": "📗",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "Доход за день: 75 🪙",
+      "badge": null,
+      "permanent": true,
+      "rarity": null,
+      "income_after": 75,
+      "resale_price": null
+    },
+    {
+      "id": "course_future",
+      "title": "Вклад в будущее",
+      "category": "education",
+      "kind": "education",
+      "price": 80,
+      "emoji": "📙",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "Доход за день: 95 🪙",
+      "badge": null,
+      "permanent": true,
+      "rarity": null,
+      "income_after": 95,
+      "resale_price": null
+    },
+    {
+      "id": "course_math",
+      "title": "Учебник математики",
+      "category": "education",
+      "kind": "education",
+      "price": 160,
+      "emoji": "📕",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "Доход за день: 120 🪙",
+      "badge": null,
+      "permanent": true,
+      "rarity": null,
+      "income_after": 120,
+      "resale_price": null
+    },
+    {
+      "id": "decor_bow",
       "title": "Бантик",
-      "category": "clothes",
+      "category": "decorations",
       "kind": "optional",
-      "price": 15,
+      "price": 10,
       "emoji": "🎀",
       "effects": {
         "satiety": 0,
-        "happiness": 15,
-        "cleanliness": 0,
-        "xp": 5
+        "happiness": 0,
+        "cleanliness": 0
       },
-      "effect_text": "Красота! +15 к счастью 🎀",
-      "badge": null
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "common",
+      "income_after": null,
+      "resale_price": 7
     },
     {
-      "id": "scarf",
-      "title": "Шарфик",
-      "category": "clothes",
+      "id": "decor_socks",
+      "title": "Носочки",
+      "category": "decorations",
       "kind": "optional",
-      "price": 25,
-      "emoji": "🧣",
+      "price": 12,
+      "emoji": "🧦",
       "effects": {
         "satiety": 0,
-        "happiness": 20,
-        "cleanliness": 0,
-        "xp": 5
+        "happiness": 0,
+        "cleanliness": 0
       },
-      "effect_text": "Тепло и модно! +20 к счастью 🧣",
-      "badge": null
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "common",
+      "income_after": null,
+      "resale_price": 8
     },
     {
-      "id": "hat",
-      "title": "Шляпа",
-      "category": "clothes",
+      "id": "decor_tulip",
+      "title": "Тюльпан",
+      "category": "decorations",
       "kind": "optional",
-      "price": 30,
-      "emoji": "🎩",
-      "effects": {
-        "satiety": 0,
-        "happiness": 25,
-        "cleanliness": 0,
-        "xp": 5
-      },
-      "effect_text": "Какой франт! +25 к счастью 🎩",
-      "badge": null
-    },
-    {
-      "id": "crown",
-      "title": "Корона",
-      "category": "clothes",
-      "kind": "optional",
-      "price": 120,
-      "emoji": "👑",
-      "effects": {
-        "satiety": 0,
-        "happiness": 70,
-        "cleanliness": 0,
-        "xp": 25
-      },
-      "effect_text": "Королевский питомец! +70 к счастью 👑",
-      "badge": "Редкое"
-    },
-    {
-      "id": "flower",
-      "title": "Цветок в горшке",
-      "category": "home",
-      "kind": "optional",
-      "price": 18,
+      "price": 14,
       "emoji": "🌷",
       "effects": {
         "satiety": 0,
-        "happiness": 15,
-        "cleanliness": 5,
-        "xp": 5
+        "happiness": 0,
+        "cleanliness": 0
       },
-      "effect_text": "Красиво! +15 к счастью 🌷",
-      "badge": null
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "common",
+      "income_after": null,
+      "resale_price": 10
     },
     {
-      "id": "lamp",
-      "title": "Ночник",
-      "category": "home",
+      "id": "decor_sunflower",
+      "title": "Подсолнух",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 16,
+      "emoji": "🌻",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "common",
+      "income_after": null,
+      "resale_price": 11
+    },
+    {
+      "id": "decor_chime",
+      "title": "Колокольчик",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 18,
+      "emoji": "🎐",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "common",
+      "income_after": null,
+      "resale_price": 13
+    },
+    {
+      "id": "decor_rainbow",
+      "title": "Радуга",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 20,
+      "emoji": "🌈",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "common",
+      "income_after": null,
+      "resale_price": 14
+    },
+    {
+      "id": "decor_star",
+      "title": "Звёздочка",
+      "category": "decorations",
       "kind": "optional",
       "price": 22,
+      "emoji": "⭐",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "common",
+      "income_after": null,
+      "resale_price": 15
+    },
+    {
+      "id": "decor_clover",
+      "title": "Клевер",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 24,
+      "emoji": "🍀",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "common",
+      "income_after": null,
+      "resale_price": 17
+    },
+    {
+      "id": "decor_flags",
+      "title": "Флажки",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 26,
+      "emoji": "🎏",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "common",
+      "income_after": null,
+      "resale_price": 18
+    },
+    {
+      "id": "decor_lamp",
+      "title": "Ночник",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 30,
       "emoji": "💡",
       "effects": {
         "satiety": 0,
-        "happiness": 20,
-        "cleanliness": 0,
-        "xp": 5
+        "happiness": 0,
+        "cleanliness": 0
       },
-      "effect_text": "Не страшно ночью! +20 к счастью 💡",
-      "badge": null
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "common",
+      "income_after": null,
+      "resale_price": 21
     },
     {
-      "id": "bed",
-      "title": "Лежанка",
-      "category": "home",
+      "id": "decor_hat",
+      "title": "Шляпа",
+      "category": "decorations",
       "kind": "optional",
-      "price": 50,
-      "emoji": "🛏️",
+      "price": 40,
+      "emoji": "🎩",
       "effects": {
         "satiety": 0,
-        "happiness": 30,
-        "cleanliness": 10,
-        "xp": 10
+        "happiness": 0,
+        "cleanliness": 0
       },
-      "effect_text": "Сладкий сон! +30 к счастью 🛏️",
-      "badge": null
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "rare",
+      "income_after": null,
+      "resale_price": 28
     },
     {
-      "id": "house",
-      "title": "Домик",
-      "category": "home",
+      "id": "decor_glasses",
+      "title": "Очки",
+      "category": "decorations",
       "kind": "optional",
-      "price": 150,
-      "emoji": "🏠",
+      "price": 48,
+      "emoji": "🕶️",
       "effects": {
         "satiety": 0,
-        "happiness": 80,
-        "cleanliness": 20,
-        "xp": 30
+        "happiness": 0,
+        "cleanliness": 0
       },
-      "effect_text": "Свой дом! +80 к счастью и +30 опыта 🏠",
-      "badge": "Мечта"
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "rare",
+      "income_after": null,
+      "resale_price": 34
+    },
+    {
+      "id": "decor_backpack",
+      "title": "Рюкзачок",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 55,
+      "emoji": "🎒",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "rare",
+      "income_after": null,
+      "resale_price": 38
+    },
+    {
+      "id": "decor_lantern",
+      "title": "Фонарик",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 62,
+      "emoji": "🏮",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "rare",
+      "income_after": null,
+      "resale_price": 43
+    },
+    {
+      "id": "decor_violin",
+      "title": "Скрипка",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 70,
+      "emoji": "🎻",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "rare",
+      "income_after": null,
+      "resale_price": 49
+    },
+    {
+      "id": "decor_carousel",
+      "title": "Карусель",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 80,
+      "emoji": "🎠",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "rare",
+      "income_after": null,
+      "resale_price": 56
+    },
+    {
+      "id": "decor_crown",
+      "title": "Корона",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 100,
+      "emoji": "👑",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "epic",
+      "income_after": null,
+      "resale_price": 70
+    },
+    {
+      "id": "decor_castle",
+      "title": "Замок",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 140,
+      "emoji": "🏰",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "epic",
+      "income_after": null,
+      "resale_price": 98
+    },
+    {
+      "id": "decor_rocket",
+      "title": "Ракета",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 170,
+      "emoji": "🚀",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "epic",
+      "income_after": null,
+      "resale_price": 119
+    },
+    {
+      "id": "decor_diamond",
+      "title": "Алмаз",
+      "category": "decorations",
+      "kind": "optional",
+      "price": 200,
+      "emoji": "💎",
+      "effects": {
+        "satiety": 0,
+        "happiness": 0,
+        "cleanliness": 0
+      },
+      "effect_text": "В коллекцию!",
+      "badge": null,
+      "permanent": true,
+      "rarity": "epic",
+      "income_after": null,
+      "resale_price": 140
     }
   ],
   "deal_of_day": {
@@ -463,6 +903,15 @@
     "day_multiplier": 7,
     "day_offset": 3,
     "min_price": 1,
-    "explain": "Товар дня — items[(day × 7 + 3) mod число товаров], цена со скидкой."
+    "explain": "Товар дня — только из расходуемых (без вещей навсегда): pool[(day × 7 + 3) mod размер], цена со скидкой."
+  },
+  "purchase_rules": {
+    "requires_confirmation": true,
+    "hungry_block_at_satiety": 40,
+    "hungry_block_message": "{pet_name} слишком голоден, чтобы играть или учиться! Сначала накорми его.",
+    "courses_sequential": true,
+    "start_income": 50,
+    "decorations_resale_rate": 0.7,
+    "decorations_sale_requires_confirmation": true
   }
 }
