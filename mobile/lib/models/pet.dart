@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Вид питомца: 3 варианта.
-enum PetType { cat, dog, penguin }
+enum PetType { cat, dog, raccoon }
 
 /// Окраска: 3 варианта на каждый вид.
 /// Итого 3 x 3 = 9 комбинаций кастомизации.
@@ -14,8 +14,8 @@ extension PetTypeInfo on PetType {
         return 'Кошечка';
       case PetType.dog:
         return 'Собачка';
-      case PetType.penguin:
-        return 'Пингвинчик';
+      case PetType.raccoon:
+        return 'Енотик';
     }
   }
 
@@ -25,8 +25,8 @@ extension PetTypeInfo on PetType {
         return '🐱';
       case PetType.dog:
         return '🐶';
-      case PetType.penguin:
-        return '🐧';
+      case PetType.raccoon:
+        return '🦝';
     }
   }
 }
@@ -160,28 +160,28 @@ class PetLook {
         accent: Color(0xFF212121),
       );
     }
-    // Пингвинчик
+    // Енотик
     if (variant == PetVariant.v1) {
       return const PetLook(
-        label: 'Морячок',
-        bgStart: Color(0xFFBBDEFB),
-        bgEnd: Color(0xFF64B5F6),
-        accent: Color(0xFF0D47A1),
+        label: 'Рыжий',
+        bgStart: Color(0xFFFFE0B2),
+        bgEnd: Color(0xFFFFB74D),
+        accent: Color(0xFFE65100),
       );
     }
     if (variant == PetVariant.v2) {
       return const PetLook(
-        label: 'Льдинка',
-        bgStart: Color(0xFFE0F7FA),
-        bgEnd: Color(0xFF80DEEA),
-        accent: Color(0xFF006064),
+        label: 'Серый',
+        bgStart: Color(0xFFE0E0E0),
+        bgEnd: Color(0xFF9E9E9E),
+        accent: Color(0xFF424242),
       );
     }
     return const PetLook(
-      label: 'Пончик',
-      bgStart: Color(0xFFF8BBD0),
-      bgEnd: Color(0xFFF48FB1),
-      accent: Color(0xFFAD1457),
+      label: 'Ледяной',
+      bgStart: Color(0xFFE1F5FE),
+      bgEnd: Color(0xFF81D4FA),
+      accent: Color(0xFF01579B),
     );
   }
 }

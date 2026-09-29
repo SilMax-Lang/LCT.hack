@@ -14,7 +14,7 @@ import '../models/pet.dart';
 ///   hungry.webp         грустный     + hungry_poster.png
 /// ```
 ///
-/// - вид: `cat`, `dog`, `penguin`;
+/// - вид: `cat`, `dog`, `raccoon`;
 /// - окраска: `ginger` (v1), `gray` (v2), `black` (v3);
 /// - этап: `small` (малыш), `medium` (ученик), `large` (исследователь).
 ///
@@ -70,7 +70,13 @@ class PetAssets {
 
   /// Папка модели (есть она или нет).
   static String folderFor(PetType type, PetVariant variant, PetStage stage) =>
-      'assets/pets/${type.name}_${colorNames[variant]}_${stageNames[stage]}';
+      'assets/pets/${type.name}_${colorName(type, variant)}_${stageNames[stage]}';
+
+  /// Окраска в имени папки: у енотика третья окраска — ледяная (`ice`).
+  static String colorName(PetType type, PetVariant variant) =>
+      type == PetType.raccoon && variant == PetVariant.v3
+          ? 'ice'
+          : colorNames[variant]!;
 
   /// Папка модели для этапа по [level] или null, если модели ещё нет.
   static String? modelFolder(PetType type, PetVariant variant, int level) {
