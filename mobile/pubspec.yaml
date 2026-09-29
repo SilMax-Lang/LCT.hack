@@ -39,5 +39,12 @@ flutter:
     - assets/pets/dog_black_small/
     - assets/pets/dog_black_medium/
     - assets/pets/dog_black_large/
+    - assets/pets/raccoon_ginger_small/
+    - assets/pets/raccoon_ginger_medium/
+    - assets/pets/raccoon_ginger_large/
+    - assets/pets/raccoon_gray_small/
+    - assets/pets/raccoon_gray_medium/
+    - assets/pets/raccoon_gray_large/
+    - assets/pets/raccoon_ice_small/
     # Аксессуары поверх питомца (PNG), см. lib/pet/pet_view.dart.
     - assets/accessories/
