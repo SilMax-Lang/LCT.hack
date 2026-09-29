@@ -688,7 +688,9 @@ def build_economy() -> dict[str, Any]:
             {
                 "id": "day_end",
                 "xp": dart_int(src, r"const int endOfDayXp = (\d+);"),
-                "explain": "Каждый прожитый день (кнопка «Новый день»).",
+                "explain": "Конец дня, до 10: 1 + по 3 за каждое решение дня — "
+                "питомец сыт и чист (сытость и чистота больше 40), план "
+                "подтверждён и выполнен, в копилку отложено.",
             },
         ],
         "xp_per_day_max": dart_int(src, r"const int maxXpPerDay = (\d+);"),
@@ -728,7 +730,7 @@ def build_economy() -> dict[str, Any]:
             "quick_amounts": [int(x) for x in quick.split(",")],
             "withdraw_amount": dart_int(bank, r"_withdraw\((\d+)\)"),
             "withdraw_requires_confirmation": True,
-            "suggested_per_day": dart_int(bank, r"const int _perDay = (\d+);"),
+            "eta_average_days": dart_int(src, r"const int savingsAverageDays = (\d+);"),
             "deposit": {
                 "rate_per_year": float(
                     re.search(r"const double depositRate = ([\d.]+);", src).group(1)

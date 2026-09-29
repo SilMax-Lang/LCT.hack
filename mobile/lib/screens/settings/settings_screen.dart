@@ -5,6 +5,7 @@ import '../../models/pet.dart';
 import '../../models/player_profile.dart';
 import '../../widgets/finny_avatar.dart';
 import '../dev/dev_screen.dart';
+import '../help/help_screen.dart';
 import '../parent/parent_gate.dart';
 import '../parent/parent_screen.dart';
 
@@ -121,6 +122,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Text('❓', style: TextStyle(fontSize: 24)),
+                  title: const Text('Как играть и словарик'),
+                  subtitle: const Text('Три решения с монетками и слова'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                        builder: (_) => const HelpScreen()),
+                  ),
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary:
+                      const Text('✨', style: TextStyle(fontSize: 24)),
+                  title: const Text('Анимации'),
+                  subtitle: const Text('Живой питомец и вспышки'),
+                  value: game.animationsOn,
+                  onChanged: game.setAnimations,
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Text('ℹ️', style: TextStyle(fontSize: 24)),
                   title: const Text('О приложении'),
                   onTap: () => showDialog<void>(
@@ -129,7 +150,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: const Text('Финни 🐱'),
                       content: const Text(
                         'Заботимся о питомце, решаем задания и учимся '
-                        'управлять монетками.',
+                        'управлять монетками.\n\n'
+                        'Монетки игровые: их нельзя купить или обменять '
+                        'на деньги. Без рекламы, без покупок, без '
+                        'интернета.',
                       ),
                       actions: [
                         TextButton(

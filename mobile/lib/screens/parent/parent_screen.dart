@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../app.dart';
 import '../../data/lessons_data.dart';
+import '../../data/missions_data.dart';
+import '../../models/game_state.dart';
 import '../../models/player_profile.dart';
 import '../../theme/kids_theme.dart';
 
@@ -125,16 +127,65 @@ class ParentScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                   ],
+                  // Без оценок и счётчика ошибок (ТЗ 2.5.12): только
+                  // что пройдено и что ждёт повторения.
                   Text(
-                    '❌ Ошибок за всё время: ${game.lessonMistakes}\n'
+                    '🧩 Практика в игре: ${game.missionsDone.length} '
+                    'из ${missionsCatalog.length}\n'
                     '🔁 Ждут повторения: ${game.lessonsRetry.length}\n'
                     '🐷 В копилке: ${game.savings} из ${game.goalTarget} '
                     '(${game.goalName})\n'
+                    '🌱 Питомец: ${game.pet?.stage ?? '—'}, '
+                    'уровень ${game.pet?.level ?? 1}\n'
                     '📅 Игровой день: ${game.day}',
                     style: const TextStyle(height: 1.5),
                   ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '📚 Пройденные темы',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final topic in FinTopic.values)
+                    _TopicRow(
+                      topic: topic,
+                      solved: lessonsCatalog
+                          .where((l) =>
+                              l.topic == topic &&
+                              game.lessonsSolved.contains(l.id))
+                          .length,
+                      total: lessonsCatalog
+                          .where((l) => l.topic == topic)
+                          .length,
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const _GoalsCard(),
+          const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              leading: const Text('🎁', style: TextStyle(fontSize: 24)),
+              title: const Text('Подарить +$parentGift 🪙'),
+              subtitle: Text(game.parentGiftAvailable
+                  ? 'Раз в игровой день — за помощь дома или хорошую идею. '
+                      'Ребёнок увидит «Подарок от взрослого»'
+                  : 'Сегодня уже подарено. Завтра — снова можно'),
+              enabled: game.parentGiftAvailable,
+              onTap: game.giveParentGift,
             ),
           ),
           const SizedBox(height: 12),
@@ -179,11 +230,81 @@ class ParentScreen extends StatelessWidget {
               '💡 Все задания открыты. Возраст лишь подсказывает ребёнку, '
               'с чего начать: класс = возраст − 6 (7 лет — 1 класс, 10+ — 4). '
               'В «Финансах» 1–2 класс — 1 уровень, 3 — 2-й, 4 — 3-й. '
-              'Ошибка не отнимает монет: задание просто просит повторить.',
+              'Ошибка не отнимает монет: задание просто просит повторить.\n\n'
+              '🗑️ «Начать игру заново» удаляет все данные игры с этого '
+              'устройства. Другие данные приложение не хранит.',
               style: TextStyle(height: 1.4, color: scheme.onSurface),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TopicRow extends StatelessWidget {
+  final FinTopic topic;
+  final int solved;
+  final int total;
+
+  const _TopicRow({
+    required this.topic,
+    required this.solved,
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Эмодзи, а не типографские ▶/⬜: их нет в Roboto (см. glyphs_test).
+    final mark = total > 0 && solved == total
+        ? '✅'
+        : (solved > 0 ? '📖' : '🔹');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Text('$mark ${topic.emoji} ${topic.title}: $solved из $total'),
+    );
+  }
+}
+
+/// Цели приложения — из Единой рамки компетенций (ТЗ 1, 2.5.12).
+class _GoalsCard extends StatelessWidget {
+  const _GoalsCard();
+
+  static const _goals = [
+    'Понимать, зачем нужен бюджет и что расходы не должны быть больше '
+        'доходов',
+    'Отличать обязательные расходы от желаний («надо» и «хочу»)',
+    'Планировать покупки, когда монет мало',
+    'Ставить цель и регулярно откладывать часть монет',
+    'Оценивать свои решения: сравнивать план и факт',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '🎯 Чему учит игра',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            for (final g in _goals)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Text('• $g'),
+              ),
+            const SizedBox(height: 6),
+            Text(
+              'Монетки игровые. Нет рекламы, покупок и сбора данных — '
+              'всё хранится только на этом устройстве.',
+              style: TextStyle(color: KidsTheme.muted(context)),
+            ),
+          ],
+        ),
       ),
     );
   }

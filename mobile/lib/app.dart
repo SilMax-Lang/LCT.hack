@@ -24,6 +24,18 @@ class FinnyApp extends StatelessWidget {
           theme: KidsTheme.light(),
           darkTheme: KidsTheme.dark(),
           themeMode: gameState.isDark ? ThemeMode.dark : ThemeMode.light,
+          // Анимации можно выключить в настройках (ТЗ 3.6) — как и
+          // системной настройкой «Убрать анимацию».
+          builder: (context, child) {
+            final mq = MediaQuery.of(context);
+            return MediaQuery(
+              data: mq.copyWith(
+                disableAnimations:
+                    mq.disableAnimations || !gameState.animationsOn,
+              ),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
           home: gameState.onboardingDone
               ? const MainShell()
               : const OnboardingFlow(),

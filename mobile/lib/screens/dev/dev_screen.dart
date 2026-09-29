@@ -47,6 +47,22 @@ class DevScreen extends StatelessWidget {
               ),
             ),
           _Section(
+            title: 'Демо: тестовый профиль',
+            hint: 'Тестер, 9 лет, рыжий котик Финни. Всё — к началу: '
+                'день 1, 60 🪙, пустая копилка. Дальше сценарий идёт '
+                'подряд: «Следующий день» или «+1 день» ниже',
+            children: [
+              _DevButton(
+                label: '🔄 Тестовый профиль с нуля',
+                onTap: () async {
+                  final navigator = Navigator.of(context);
+                  await GameStateScope.read(context).startTestProfile();
+                  navigator.popUntil((route) => route.isFirst);
+                },
+              ),
+            ],
+          ),
+          _Section(
             title: 'Уровень и опыт',
             hint: 'С наградами и экраном роста — как в игре, '
                 'без дневного потолка опыта',

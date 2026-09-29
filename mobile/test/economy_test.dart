@@ -65,7 +65,8 @@ void main() {
       expect(game.pet!.xp, 25, reason: 'опыт за день упёрся в потолок');
 
       game.nextDay();
-      expect(game.pet!.xp, 35, reason: 'новый день: +10 за конец дня');
+      expect(game.pet!.xp, 29,
+          reason: 'новый день: сыт и чист (+1 +3), без плана и копилки');
     });
 
     test('предметы и копилка опыта не дают', () async {
@@ -92,6 +93,7 @@ void main() {
       final game = await readyGame();
       game.streak = 2;
       game.lastActionDate = _yesterday();
+      game.missionsDone.add('m_first_save'); // практику считаем отдельно
       final before = game.balance;
       game.deposit(10);
       expect(game.streak, 3);
@@ -214,6 +216,7 @@ void main() {
     );
     await tester.ensureVisible(milkButton);
     await tester.pumpAndSettle();
+    game.missionsDone.add('m_need_first'); // без награды за практику
     final before = game.balance;
 
     await tester.tap(milkButton);
@@ -270,6 +273,9 @@ void main() {
         home: const SettingsScreen(),
       ),
     ));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text(SettingsScreen.version), 200,
+        scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
 
     for (var i = 0; i < 6; i++) {

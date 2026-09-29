@@ -1,11 +1,28 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Ключ подписи релиза — только вне репозитория (ТЗ 3.4: без ключей в git).
+// Берётся из android/key.properties (в .gitignore) или из переменных
+// окружения CI: FINNY_KEYSTORE, FINNY_KEYSTORE_PASSWORD, FINNY_KEY_ALIAS,
+// FINNY_KEY_PASSWORD. Нет ключа — релиз подписывается debug-ключом,
+// чтобы сборка работала у любого разработчика.
+val keyProps = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+fun signingValue(prop: String, env: String): String? =
+    keyProps.getProperty(prop) ?: System.getenv(env)?.takeIf { it.isNotBlank() }
+
+val releaseStore = signingValue("storeFile", "FINNY_KEYSTORE")
+
 android {
-    namespace = "com.example.finny_pet"
+    namespace = "ru.litenergy.finny"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -15,25 +32,33 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.finny_pet"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // Уникальное имя пакета для RuStore (ТЗ 3.3).
+        applicationId = "ru.litenergy.finny"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
-        // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
-        // You can force using the value of versionCode by specifying the `-P force-version-code-ignoring-abi=true`
-        // flag during build.
+        // Версия и номер сборки — из pubspec.yaml (version: X.Y.Z+N).
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (releaseStore != null) {
+            create("release") {
+                storeFile = file(releaseStore)
+                storePassword = signingValue("storePassword", "FINNY_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "FINNY_KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "FINNY_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (releaseStore != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

@@ -164,6 +164,8 @@ void main() {
     test('скидка дня списывает меньше монет', () async {
       final game = await readyGame();
       game.balance = 500;
+      // Практику «Покупка со скидкой» считаем отдельно (economy_test).
+      game.missionsDone.addAll(['m_deal', 'm_need_first']);
       final deal = dealOfDay(game.day);
       expect(game.priceOf(deal), lessThan(deal.price));
 
@@ -304,6 +306,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('👨‍👩‍👧 Родительский режим'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Возраст: 9 лет'), 200,
+        scrollable: find.byType(Scrollable).last);
     expect(find.text('Возраст: 9 лет'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

@@ -78,4 +78,3 @@ def health_v1() -> dict[str, str]:
         "app_version": settings.app_version,
         "content_version": library.content_version if library else "not_loaded",
     }
-

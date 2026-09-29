@@ -71,6 +71,70 @@ extension LessonTrackInfo on LessonTrack {
   }
 }
 
+/// Темы ТЗ (п. 2.5.8): планирование бюджета, сбережения, платежи и
+/// покупки. Остальное — просто счёт. Нужны родителю («пройденные темы»)
+/// и карте контента.
+enum FinTopic { budget, savings, purchases, counting }
+
+extension FinTopicInfo on FinTopic {
+  String get title {
+    switch (this) {
+      case FinTopic.budget:
+        return 'Планирование бюджета';
+      case FinTopic.savings:
+        return 'Сбережения и цель';
+      case FinTopic.purchases:
+        return 'Платежи и покупки';
+      case FinTopic.counting:
+        return 'Счёт с деньгами';
+    }
+  }
+
+  String get emoji {
+    switch (this) {
+      case FinTopic.budget:
+        return '📋';
+      case FinTopic.savings:
+        return '🐷';
+      case FinTopic.purchases:
+        return '🛒';
+      case FinTopic.counting:
+        return '🧮';
+    }
+  }
+}
+
+/// Тема задания по id. Новое задание без строки здесь — «счёт».
+const Map<String, FinTopic> lessonTopics = {
+  'fin_1_food': FinTopic.purchases,
+  'fin_1_want_need': FinTopic.purchases,
+  'fin_1_change': FinTopic.purchases,
+  'fin_1_piggy': FinTopic.savings,
+  'fin_1_shortage': FinTopic.purchases,
+  'fin_2_bed': FinTopic.savings,
+  'fin_2_budget': FinTopic.budget,
+  'fin_2_mistake': FinTopic.budget,
+  'fin_2_withdraw': FinTopic.savings,
+  'fin_2_vitamins': FinTopic.purchases,
+  'fin_3_growth': FinTopic.budget,
+  'fin_3_vet': FinTopic.budget,
+  'fin_3_deposit': FinTopic.savings,
+  'fin_3_craft': FinTopic.budget,
+  'fin_3_plan_fact': FinTopic.budget,
+  'math_1_ball': FinTopic.purchases,
+  'math_1_missing': FinTopic.purchases,
+  'math_1_compare': FinTopic.purchases,
+  'math_2_week_food': FinTopic.budget,
+  'math_2_weeks': FinTopic.savings,
+  'math_3_discount': FinTopic.purchases,
+  'math_3_percent': FinTopic.savings,
+  'math_4_balance': FinTopic.budget,
+  'math_4_kopecks': FinTopic.purchases,
+  'math_4_wholesale': FinTopic.purchases,
+  'math_4_cashback': FinTopic.purchases,
+  'math_4_dynamic_goal': FinTopic.savings,
+};
+
 class Lesson {
   final String id;
   final LessonTrack track;
@@ -106,6 +170,8 @@ class Lesson {
 
   /// Чем старше класс, тем больше монет.
   int get reward => rewardForGrade(grade);
+
+  FinTopic get topic => lessonTopics[id] ?? FinTopic.counting;
 }
 
 /// Награда за задание: 10 / 15 / 20 / 25 монет за 1–4 уровень.

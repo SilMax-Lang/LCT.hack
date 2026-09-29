@@ -183,6 +183,9 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
+      await tester.scrollUntilVisible(find.text('Для экспертов'), 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Для экспертов'));
       await tester.pumpAndSettle();
       expect(find.text('🧪 Режим эксперта'), findsOneWidget);
@@ -191,7 +194,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(game.pet!.xp, 50);
 
-      await tester.ensureVisible(find.text('Ученик (ур. $teenLevel)'));
+      await tester.scrollUntilVisible(find.text('Ученик (ур. $teenLevel)'), 200,
+          scrollable: find.byType(Scrollable).last);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Ученик (ур. $teenLevel)'));
       await tester.pumpAndSettle();

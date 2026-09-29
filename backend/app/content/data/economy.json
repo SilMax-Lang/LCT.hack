@@ -140,7 +140,7 @@
     {
       "id": "day_end",
       "xp": 10,
-      "explain": "Каждый прожитый день (кнопка «Новый день»)."
+      "explain": "Конец дня, до 10: 1 + по 3 за каждое решение дня — питомец сыт и чист (сытость и чистота больше 40), план подтверждён и выполнен, в копилку отложено."
     }
   ],
   "xp_per_day_max": 25,
@@ -184,7 +184,7 @@
     ],
     "withdraw_amount": 10,
     "withdraw_requires_confirmation": true,
-    "suggested_per_day": 25,
+    "eta_average_days": 5,
     "deposit": {
       "rate_per_year": 0.2,
       "days_per_year": 5,

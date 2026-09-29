@@ -251,6 +251,23 @@ class Pet {
     }
   }
 
+  /// Почему питомец так себя чувствует и что поможет — одной строкой
+  /// под облачком (ТЗ 2.5.10: причина эмоции объясняется ребёнку).
+  String get moodReason {
+    switch (mood) {
+      case PetMood.hungry:
+        return 'Сытость $hunger из 100 — дай еду из рюкзака';
+      case PetMood.dirty:
+        return 'Чистота $cleanliness из 100 — пора помыться';
+      case PetMood.sad:
+        return 'Счастье $happiness из 100 — поможет игрушка';
+      case PetMood.calm:
+        return 'Сыт и чист. Игрушка поднимет настроение';
+      case PetMood.joyful:
+        return 'Сыт, чист и доволен — спасибо за заботу!';
+    }
+  }
+
   /// Мордочка настроения (состояние дублируется текстом и эмодзи,
   /// а не только цветом — требование ТЗ).
   String get moodEmoji {

@@ -473,7 +473,11 @@ class SavingsRules(ContentModel):
     quick_amounts: list[int] = Field(min_length=1)
     withdraw_amount: int = Field(ge=1)
     withdraw_requires_confirmation: bool
-    suggested_per_day: int = Field(ge=1)
+    eta_average_days: int = Field(
+        ge=1,
+        description="Срок до цели считается по средней сумме пополнения "
+        "за столько последних дней (ТЗ 2.5.7)",
+    )
     deposit: DepositRules
 
 

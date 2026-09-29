@@ -7,11 +7,17 @@ import '../../models/game_state.dart';
 import '../level_up/level_up_screen.dart';
 import 'goal_sheet.dart';
 
-/// Сколько монет в день советуем откладывать — для оценки срока цели.
-const int _perDay = 25;
-
-/// Сколько дней ещё копить при [_perDay] монетах в день.
-int daysToGoal(int left) => left <= 0 ? 0 : (left + _perDay - 1) ~/ _perDay;
+/// Срок до цели по средней сумме пополнения (ТЗ 2.5.7): «по N 🪙 в день —
+/// ещё M дн.». Пока средней нет — честно говорим, что срок появится.
+String etaText(GameState game, int left) {
+  if (left <= 0) return 'Цель накоплена!';
+  final days = game.daysToGoal(left);
+  if (days == null) {
+    return 'Отложи монетки — и я посчитаю, сколько дней копить';
+  }
+  return 'В среднем ты откладываешь ${game.avgDeposit} 🪙 в день — '
+      'ещё $days дн.';
+}
 
 /// Копилка: цель, прогресс, пополнение и снятие.
 class BankScreen extends StatefulWidget {
@@ -55,14 +61,18 @@ class _BankScreenState extends State<BankScreen> {
     final game = GameStateScope.read(context);
     final newSavings = game.savings - amount;
     final newLeft = game.goalTarget - newSavings;
+    final daysNow = game.daysToGoal(game.goalLeft);
+    final daysAfter = game.daysToGoal(newLeft);
+    final eta = daysNow == null || daysAfter == null
+        ? 'До цели останется $newLeft 🪙 (было ${game.goalLeft}).'
+        : 'По ${game.avgDeposit} 🪙 в день до цели — ещё $daysAfter дн. '
+            '(было $daysNow).';
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Забрать $amount 🪙?'),
         content: Text(
-          'В копилке станет $newSavings из ${game.goalTarget}.\n'
-          'До цели — ещё ${daysToGoal(newLeft)} дн. '
-          '(было ${daysToGoal(game.goalLeft)}).',
+          'В копилке станет $newSavings из ${game.goalTarget}.\n$eta',
         ),
         actions: [
           TextButton(
@@ -127,12 +137,14 @@ class _BankScreenState extends State<BankScreen> {
                 Text(
                   reached
                       ? 'Накоплено! 🎉'
-                      : '🐷 ${game.savings} из ${game.goalTarget}',
+                      : '🐷 ${game.savings} из ${game.goalTarget} • '
+                          'осталось ${game.goalLeft}',
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 if (!reached)
                   Text(
-                    'По $_perDay 🪙 в день — ещё ${daysToGoal(game.goalLeft)} дн.',
+                    etaText(game, game.goalLeft),
+                    textAlign: TextAlign.center,
                     style: TextStyle(color: KidsTheme.muted(context)),
                   ),
                 TextButton.icon(

@@ -64,6 +64,10 @@ void main() {
     expect(find.text('Осталось до цели'), findsOneWidget);
     expect(tester.takeException(), isNull, reason: 'бумажка переполнилась');
 
+    // Итоги с ростом питомца — бумажка длиннее, кнопка внизу прокрутки.
+    expect(find.text('🌱 Рост питомца за вчера'), findsOneWidget);
+    await tester.ensureVisible(find.text('Играем дальше!'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Играем дальше!'));
     await tester.pumpAndSettle();
     expect(find.text('Итоги дня'), findsNothing);

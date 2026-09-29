@@ -68,7 +68,8 @@ class _PetModelState extends State<PetModel>
     if (widget.emotion != old.emotion) {
       _video.loop(PetAssets.clipFor(widget.emotion));
     }
-    if (widget.reaction > old.reaction) {
+    if (widget.reaction > old.reaction &&
+        !(MediaQuery.maybeDisableAnimationsOf(context) ?? false)) {
       _react.forward(from: 0);
       if (widget.reactionKind != PetReaction.sleep) {
         _video.playOnce('happy', immediate: true);
@@ -108,7 +109,9 @@ class _PetModelState extends State<PetModel>
     );
 
     final Widget body;
-    if (widget.animated && PetModel.liveVideo && folder != null) {
+    // Анимации выключены — вместо ролика постер той же эмоции.
+    final motion = !(MediaQuery.maybeDisableAnimationsOf(context) ?? false);
+    if (widget.animated && motion && PetModel.liveVideo && folder != null) {
       body = SizedBox(
         width: s,
         height: s,

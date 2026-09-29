@@ -2936,10 +2936,11 @@
             "type": "boolean",
             "title": "Withdraw Requires Confirmation"
           },
-          "suggested_per_day": {
+          "eta_average_days": {
             "type": "integer",
             "minimum": 1.0,
-            "title": "Suggested Per Day"
+            "title": "Eta Average Days",
+            "description": "Срок до цели считается по средней сумме пополнения за столько последних дней (ТЗ 2.5.7)"
           },
           "deposit": {
             "$ref": "#/components/schemas/DepositRules"
@@ -2951,7 +2952,7 @@
           "quick_amounts",
           "withdraw_amount",
           "withdraw_requires_confirmation",
-          "suggested_per_day",
+          "eta_average_days",
           "deposit"
         ],
         "title": "SavingsRules"

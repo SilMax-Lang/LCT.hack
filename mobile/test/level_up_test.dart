@@ -152,8 +152,8 @@ void main() {
       (tester) async {
     await narrow(tester);
     final game = await readyGame();
-    // Конец дня даёт 10 опыта — добираем до нового уровня.
-    game.pet!.xp = 95;
+    // Конец дня: питомец сыт и чист — 1 + 3 = 4 опыта, добираем до уровня.
+    game.pet!.xp = 97;
 
     await tester.pumpWidget(FinnyApp(gameState: game));
     await tester.pumpAndSettle();
@@ -161,6 +161,8 @@ void main() {
     await tester.scrollUntilVisible(find.text('Следующий день'), 300,
         scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('Следующий день'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Играем дальше!'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Играем дальше!'));
     await tester.pumpAndSettle();

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../app.dart';
 import '../../data/lessons_data.dart';
+import '../../data/missions_data.dart';
 import '../../models/game_state.dart';
 import '../../models/player_profile.dart';
 import '../../theme/kids_theme.dart';
@@ -135,6 +136,8 @@ class _QuestsScreenState extends State<QuestsScreen> {
                     '${_track.gradeLabel(recommended)} ⭐. '
                     'Открыто всё!',
           ),
+          const SizedBox(height: 10),
+          _MissionsCard(done: game.missionsDone),
           if (retry.isNotEmpty) ...[
             const SizedBox(height: 10),
             _RetryCard(lessons: retry, onOpen: _open),
@@ -189,6 +192,60 @@ class _QuestsScreenState extends State<QuestsScreen> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Практика: задания-действия в самой игре (план, копилка, покупки).
+/// Свёрнута, чтобы не отодвигать дороги; засчитываются сами.
+class _MissionsCard extends StatelessWidget {
+  final Set<String> done;
+
+  const _MissionsCard({required this.done});
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = KidsTheme.muted(context);
+    return Card(
+      child: ExpansionTile(
+        shape: const Border(),
+        leading: const Text('🧩', style: TextStyle(fontSize: 26)),
+        title: Text(
+          'Практика в игре: ${done.length} из ${missionsCatalog.length}',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text('Сделай в игре — получи +$missionReward 🪙',
+            style: TextStyle(color: muted)),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        children: [
+          for (final m in missionsCatalog)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(done.contains(m.id) ? '✅' : m.emoji,
+                      style: const TextStyle(fontSize: 22)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${m.title} • ${m.topic.title}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        Text(done.contains(m.id) ? m.lesson : m.task),
+                        if (!done.contains(m.id))
+                          Text('📍 ${m.where}', style: TextStyle(color: muted)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

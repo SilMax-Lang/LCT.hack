@@ -37,7 +37,71 @@ class _ShopScreenState extends State<ShopScreen> {
   void _spark(String id) =>
       setState(() => _sparks[id] = (_sparks[id] ?? 0) + 1);
 
-  /// Покупка — только после подтверждения: видно, сколько останется.
+  /// Не хватает монет (ТЗ 2.5.6): не молча серая кнопка, а объяснение —
+  /// сколько не хватает и что можно сделать.
+  Future<void> _explainNoMoney(int price, {String? title}) {
+    final game = GameStateScope.read(context);
+    final need = price - game.balance;
+    final options = <String>[
+      if (game.savings >= need)
+        '🐷 Забрать $need 🪙 из копилки (но цель отодвинется)',
+      if (game.nextLesson != null) '⭐ Решить задание — до 25 🪙',
+      '☀️ Дождаться нового дня — доход +${game.baseIncome} 🪙',
+      '⏳ Отложить покупку: это не ошибка, «хочу» может подождать',
+    ];
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title ?? 'Не хватает монеток'),
+        content: Text(
+          'Нужно $price 🪙, в кошельке ${game.balance} 🪙.\n'
+          'Не хватает $need 🪙. Что можно сделать:\n\n'
+          '${options.join('\n')}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Понятно'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Нажали на товар: покупка, объяснение нехватки или просьба накормить.
+  void _tap(ShopItem item) {
+    final game = GameStateScope.read(context);
+    switch (game.canBuy(item)) {
+      case BuyResult.ok:
+        _buy(item);
+      case BuyResult.noMoney:
+        _explainNoMoney(game.priceOf(item),
+            title: '${item.emoji} ${item.title}: не хватает монеток');
+      case BuyResult.hungry:
+        showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('😋 Питомец голоден'),
+            content: Text(
+              'Пока сытость ${game.pet?.hunger ?? 0} из 100, игрушки и учёба '
+              'закрыты. Сначала купи еду и дай её из рюкзака — это «надо».',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Понятно'),
+              ),
+            ],
+          ),
+        );
+      case BuyResult.owned:
+      case BuyResult.locked:
+        break;
+    }
+  }
+
+  /// Покупка — только после подтверждения: цена, категория, влияние
+  /// на питомца и сколько останется (ТЗ 2.5.6).
   Future<void> _buy(ShopItem item) async {
     final game = GameStateScope.read(context);
     final price = game.priceOf(item);
@@ -46,7 +110,9 @@ class _ShopScreenState extends State<ShopScreen> {
       builder: (dialogContext) => AlertDialog(
         title: Text('${item.emoji} ${item.title}'),
         content: Text(
-          'Купить за $price 🪙?\n'
+          'Цена: $price 🪙\n'
+          'Категория: ${item.kind.basket.emoji} ${item.kind.basket.title}\n'
+          'Питомцу: ${effectsLine(item)}\n\n'
           'В кошельке останется ${game.balance - price} 🪙.'
           '${item.permanent ? '\nЭто покупка навсегда.' : ''}',
         ),
@@ -92,8 +158,37 @@ class _ShopScreenState extends State<ShopScreen> {
     if (ok == true && mounted) game.sellDecoration(item.id);
   }
 
-  void _recolor(PetVariant variant) {
-    if (GameStateScope.read(context).recolorPet(variant)) _spark('recolor');
+  /// Перекраска — тоже покупка: с подтверждением или объяснением нехватки.
+  Future<void> _recolor(PetVariant variant) async {
+    final game = GameStateScope.read(context);
+    if (game.balance < recolorPrice) {
+      await _explainNoMoney(recolorPrice, title: '🎨 Перекраска');
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('🎨 Перекрасить питомца?'),
+        content: Text(
+          'Цена: $recolorPrice 🪙\n'
+          'Категория: ${BudgetBasket.optional.emoji} '
+          '${BudgetBasket.optional.title}\n'
+          'Питомцу: новый цвет «${PetLook.of(game.pet!.type, variant).label}»\n\n'
+          'В кошельке останется ${game.balance - recolorPrice} 🪙.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Отменить'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Купить'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted && game.recolorPet(variant)) _spark('recolor');
   }
 
   @override
@@ -120,7 +215,10 @@ class _ShopScreenState extends State<ShopScreen> {
           item: deal,
           price: game.priceOf(deal),
           spark: _sparks[deal.id] ?? 0,
-          onBuy: game.canBuy(deal) == BuyResult.ok ? () => _buy(deal) : null,
+          onBuy: switch (game.canBuy(deal)) {
+            BuyResult.owned || BuyResult.locked => null,
+            _ => () => _tap(deal),
+          },
         ),
         const SizedBox(height: 12),
         // Отделы: горизонтальная лента чипов, крупных для пальца.
@@ -189,7 +287,8 @@ class _ShopScreenState extends State<ShopScreen> {
     final price = game.priceOf(item);
     final owned = game.owned.contains(item.id);
     String label = '🪙 $price';
-    VoidCallback? onPressed = status == BuyResult.ok ? () => _buy(item) : null;
+    // Нехватка и голод — кнопка живая: объясняет, что мешает и что делать.
+    VoidCallback? onPressed = () => _tap(item);
     String? note;
     switch (status) {
       case BuyResult.owned:
@@ -198,13 +297,16 @@ class _ShopScreenState extends State<ShopScreen> {
           onPressed = () => _sell(item);
         } else {
           label = 'Есть ✅';
+          onPressed = null;
         }
       case BuyResult.locked:
         label = '🔒 $price';
         note = 'Сначала пройди предыдущий курс';
+        onPressed = null;
       case BuyResult.hungry:
         note = 'Сначала накорми питомца';
       case BuyResult.noMoney:
+        note = 'Не хватает ${price - game.balance} 🪙';
       case BuyResult.ok:
         break;
     }
@@ -249,7 +351,7 @@ class _HungryNote extends StatelessWidget {
 class _RecolorSection extends StatefulWidget {
   final GameState game;
   final int spark;
-  final ValueChanged<PetVariant> onRecolor;
+  final Future<void> Function(PetVariant) onRecolor;
 
   const _RecolorSection({
     required this.game,
@@ -268,7 +370,6 @@ class _RecolorSectionState extends State<_RecolorSection> {
   Widget build(BuildContext context) {
     final pet = widget.game.pet!;
     final current = _shown == pet.variant;
-    final afford = widget.game.balance >= recolorPrice;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -304,7 +405,7 @@ class _RecolorSectionState extends State<_RecolorSection> {
               ? 'Сейчас такой'
               : 'Перекрасить за $recolorPrice 🪙',
           icon: current ? null : Icons.brush_outlined,
-          onPressed: current || !afford ? null : () => widget.onRecolor(_shown),
+          onPressed: current ? null : () => widget.onRecolor(_shown),
         ),
       ],
     );

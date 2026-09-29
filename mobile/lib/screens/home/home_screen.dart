@@ -13,6 +13,8 @@ import '../../widgets/finny_avatar.dart';
 import '../../widgets/kids_button.dart';
 import '../../widgets/pet_model.dart';
 import '../../widgets/stat_bar.dart';
+import '../diary/diary_screen.dart';
+import '../help/help_screen.dart';
 import '../level_up/level_up_screen.dart';
 import '../quests/quests_screen.dart';
 
@@ -191,6 +193,32 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 12),
 
+        // Дневник (история, итоги, задания) и подсказка — в любой момент.
+        Row(
+          children: [
+            Expanded(
+              child: _LinkButton(
+                icon: Icons.menu_book_outlined,
+                label: 'Дневник',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const DiaryScreen()),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _LinkButton(
+                icon: Icons.help_outline,
+                label: 'Как играть',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const HelpScreen()),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
         if (lesson != null)
           Card(
             child: InkWell(
@@ -326,6 +354,13 @@ class _PetStage extends StatelessWidget {
               text: '${mood.emoji} ${mood.phrase}',
             ),
           ),
+          const SizedBox(height: 4),
+          // Почему он так себя чувствует и что поможет (ТЗ 2.5.10).
+          Text(
+            pet.moodReason,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: KidsTheme.muted(context)),
+          ),
           Semantics(
             button: true,
             label: 'Питомец ${pet.name}. Открыть рюкзак',
@@ -404,6 +439,31 @@ class _PetStage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _LinkButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _LinkButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(48, 52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      onPressed: onTap,
+      icon: Icon(icon),
+      label: Text(label),
     );
   }
 }
